@@ -40,7 +40,7 @@ instance (Num a, Ord a, Arbitrary a) => Arbitrary (CircularOrbit a) where
 
 instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (EllipticOrbit a) where
   arbitrary =
-    do eccentricity <- choose (0, 1) `suchThat` (/= 0) `suchThat` (/= 1)
+    do eccentricity <- choose (0, 1) `suchThat` (/= 1)
        PositiveQuantity periapsis <- arbitrary
        inclinationSpecifier <- arbitrary
        periapsisSpecifier <- arbitrary
