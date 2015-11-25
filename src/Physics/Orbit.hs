@@ -1,3 +1,4 @@
+-- Extensions for uom-plugin
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -6,9 +7,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
-
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
+
+-- Others
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Types and functions for dealing with Kepler orbits.
 module Physics.Orbit
@@ -17,6 +20,9 @@ module Physics.Orbit
   , InclinationSpecifier(..)
   , PeriapsisSpecifier(..)
   , Classification(..)
+
+    -- * Basic properties of the orbit
+  , isValid
 
     -- * Unit synonyms
   , Time
@@ -34,6 +40,10 @@ import Data.UnitsOfMeasure.Defs ()
 import Data.UnitsOfMeasure.Show ()
 import Linear.V3 (V3)
 import Physics.Radian ()
+
+--------------------------------------------------------------------------------
+-- Types
+--------------------------------------------------------------------------------
 
 -- | A measure in seconds.
 type Time a     = Quantity a [u| s |]
@@ -146,3 +156,19 @@ data Classification = -- | 0 <= e < 1
                     | Hyperbolic
   deriving (Show, Read, Eq)
 
+--------------------------------------------------------------------------------
+-- Functions
+--------------------------------------------------------------------------------
+
+-- | Return true is the orbit is valid and false if it is invalid. The behavior
+-- of all the other functions in this module is undefined when given an invalid
+-- orbit.
+isValid :: (Ord a, Num a) => Orbit a -> Bool
+isValid o = e >= 0 &&
+            ((e == 0) `iff` (periapsisSpecifier o == Circular)) &&
+            q > [u|0 m|] &&
+            μ > [u|0 m^3 s^-2|]
+  where iff = (==) :: Bool -> Bool -> Bool
+        e = eccentricity o
+        q = periapsis o
+        μ = primaryGravitationalParameter o
