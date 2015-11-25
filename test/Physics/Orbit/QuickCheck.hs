@@ -13,7 +13,8 @@ module Physics.Orbit.QuickCheck
 import Data.UnitsOfMeasure (u, Quantity)
 import Data.UnitsOfMeasure.QuickCheck (PositiveQuantity(..))
 import Physics.Orbit (Orbit(..), InclinationSpecifier(..), PeriapsisSpecifier(..), Unitless, Distance)
-import Test.QuickCheck (Arbitrary(..), oneof)
+import System.Random (Random)
+import Test.QuickCheck (Arbitrary(..), oneof, choose, suchThat)
 
 newtype CircularOrbit a = CircularOrbit (Orbit a)
   deriving(Show, Eq)
@@ -36,6 +37,16 @@ instance (Num a, Ord a, Arbitrary a) => Arbitrary (CircularOrbit a) where
        PositiveQuantity primaryGravitationalParameter <- arbitrary
        pure . CircularOrbit $ Orbit{..}
   shrink (CircularOrbit o) = CircularOrbit <$> shrinkOrbit o
+
+instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (EllipticOrbit a) where
+  arbitrary =
+    do eccentricity <- choose (0, 1) `suchThat` (/= 0) `suchThat` (/= 1)
+       PositiveQuantity periapsis <- arbitrary
+       inclinationSpecifier <- arbitrary
+       periapsisSpecifier <- arbitrary
+       PositiveQuantity primaryGravitationalParameter <- arbitrary
+       pure . EllipticOrbit $ Orbit{..}
+  shrink (EllipticOrbit o) = EllipticOrbit <$> shrinkOrbit o
 
 instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
   arbitrary = oneof [pure NonInclined, Inclined <$> arbitrary <*> arbitrary]

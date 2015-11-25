@@ -11,6 +11,10 @@ import Test.Tasty.TH (defaultMainGenerator)
 prop_validCircularOrbit :: CircularOrbit Double -> Bool
 prop_validCircularOrbit (CircularOrbit o) = isValid o
 
+prop_validEllipticOrbit :: EllipticOrbit Double -> Bool
+prop_validEllipticOrbit (EllipticOrbit o) = isValid o
+
+
 main :: IO ()
 main = $(defaultMainGenerator)
 
