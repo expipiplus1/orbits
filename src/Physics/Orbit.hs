@@ -27,6 +27,8 @@ module Physics.Orbit
   , classify
     -- ** Orbital elements
   , apoapsis
+  , meanMotion
+  , period
   , semiMajorAxis
   , semiMinorAxis
   , semiLatusRectum
@@ -42,11 +44,11 @@ module Physics.Orbit
   , Velocity
   ) where
 
-import Data.UnitsOfMeasure
+import Data.UnitsOfMeasure.Extra
 import Data.UnitsOfMeasure.Defs ()
 import Data.UnitsOfMeasure.Show ()
 import Linear.V3 (V3)
-import Physics.Radian ()
+import Physics.Radian (turn)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -233,3 +235,32 @@ apoapsis o =
   where
     Just a = semiMajorAxis o
     e = eccentricity o
+
+-- | Calculate the mean motion, n, of an elliptical or hyperbolic orbit.
+--
+-- 'meanMotion' returns Nothing if given a parabolic orbit.
+meanMotion :: (Floating a, Ord a) => Orbit a -> Maybe (Quantity a [u| rad/s |])
+meanMotion o =
+  case classify o of
+    Elliptic   -> Just n
+    Hyperbolic -> Just n
+    _          -> Nothing
+  where
+    Just a = semiMajorAxis o
+    μ = primaryGravitationalParameter o
+    n = ([u|1 rad|] *:) . sqrt' . abs' $ μ /: (cube a)
+
+-- | Calculate the orbital period of an elliptical orbit.
+--
+-- 'period' returns Nothing if given a parabolic or hyperbolic orbit.
+--
+-- >>> convert <$> period earthOrbit :: Maybe (Quantity Double [u| d |])
+-- Just [u| 365.25... |]
+period :: (Floating a, Ord a) => Orbit a -> Maybe (Time a)
+period o =
+  case classify o of
+    Elliptic -> Just p
+    _ -> Nothing
+  where
+    Just n = meanMotion o
+    p = turn /: n

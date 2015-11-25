@@ -26,6 +26,8 @@ library
   exposed-modules:
     Physics.Orbit
     Physics.Radian
+  other-modules:
+    Data.UnitsOfMeasure.Extra
   build-depends:
     base       >= 4.8   && < 4.9,
     linear                 < 1.21,
@@ -43,12 +45,14 @@ test-suite test
   ghc-options:
     -Wall -threaded
   hs-source-dirs:
-    test
+    test,
+    src
   main-is:
     Test.hs
   other-modules:
     Physics.Orbit.QuickCheck
     Data.CReal.QuickCheck
+    Data.UnitsOfMeasure.Extra
     Data.UnitsOfMeasure.QuickCheck
   build-depends:
     base             >= 4.8   && < 4.9,

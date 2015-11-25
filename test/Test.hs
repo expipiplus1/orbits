@@ -10,7 +10,7 @@ module Main
 import Data.CReal (CReal)
 import Data.CReal.QuickCheck ()
 import Data.Maybe (fromJust)
-import Data.UnitsOfMeasure (u, (*:), negate')
+import Data.UnitsOfMeasure.Extra (u, (*:), (/:), negate', square, cube)
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
 import Test.Tasty (testGroup, TestTree)
@@ -106,6 +106,36 @@ test_apoapsis = [ testProperty "ap > q"
                     (\(HyperbolicOrbit o) ->
                        apoapsis (o :: Orbit Double) === Nothing)
                 ]
+
+test_meanMotion :: [TestTree]
+test_meanMotion = [ testProperty "elliptic: n > 0"
+                      (\(EllipticOrbit o) ->
+                         fromJust (meanMotion (o :: Orbit Double)) > [u|0rad/s|])
+                  , testProperty "hyperbolic: n > 0"
+                      (\(HyperbolicOrbit o) ->
+                         fromJust (meanMotion (o :: Orbit Double)) > [u|0rad/s|])
+                  , testProperty "parabolic: no n"
+                      (\(ParabolicOrbit o) ->
+                         meanMotion (o :: Orbit Double) === Nothing)
+                  ]
+
+test_period :: [TestTree]
+test_period = [ testProperty "p > 0"
+                  (\(EllipticOrbit o) ->
+                     fromJust (period (o :: Orbit Double)) > [u|0s|])
+                , testProperty "4 π a^3 / p^2 = μ"
+                    (\(EllipticOrbit o) ->
+                      let Just p = period (o :: Orbit Exact)
+                          Just a = semiMajorAxis o
+                          μ = primaryGravitationalParameter o
+                      in (4 * square pi) *: cube a /: square p === μ)
+                , testProperty "parabolic: no p"
+                    (\(ParabolicOrbit o) ->
+                       period (o :: Orbit Double) === Nothing)
+                , testProperty "hyperbolic: no p"
+                    (\(HyperbolicOrbit o) ->
+                       period (o :: Orbit Double) === Nothing)
+              ]
 
 main :: IO ()
 main = $(defaultMainGenerator)
