@@ -48,6 +48,16 @@ instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (EllipticOrbit a) wh
        pure . EllipticOrbit $ Orbit{..}
   shrink (EllipticOrbit o) = EllipticOrbit <$> shrinkOrbit o
 
+instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (ParabolicOrbit a) where
+  arbitrary =
+    do let eccentricity = 1
+       PositiveQuantity periapsis <- arbitrary
+       inclinationSpecifier <- arbitrary
+       periapsisSpecifier <- arbitrary
+       PositiveQuantity primaryGravitationalParameter <- arbitrary
+       pure . ParabolicOrbit $ Orbit{..}
+  shrink (ParabolicOrbit o) = ParabolicOrbit <$> shrinkOrbit o
+
 instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
   arbitrary = oneof [pure NonInclined, Inclined <$> arbitrary <*> arbitrary]
   shrink Inclined{..} = [NonInclined]

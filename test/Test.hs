@@ -14,6 +14,8 @@ prop_validCircularOrbit (CircularOrbit o) = isValid o
 prop_validEllipticOrbit :: EllipticOrbit Double -> Bool
 prop_validEllipticOrbit (EllipticOrbit o) = isValid o
 
+prop_validParabolicOrbit :: ParabolicOrbit Double -> Bool
+prop_validParabolicOrbit (ParabolicOrbit o) = isValid o
 
 main :: IO ()
 main = $(defaultMainGenerator)
