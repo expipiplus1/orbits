@@ -1,6 +1,7 @@
 name:                orbit
 version:             0.1.0.0
 synopsis:            Types and functions for Kepler orbits.
+description:         Types and functions for Kepler orbits.
 homepage:            https://github.com/expipiplus1/orbit
 bug-reports:         http://github.com/expipiplus1/orbit/issues
 license:             MIT
