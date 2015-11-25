@@ -43,18 +43,15 @@ install:
    fi
  - travis_retry cabal update -v
  - sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
- - sed -i -e 's/uom-plugin *>= 0.1.1/uom-plugin >= 0.1.0/' orbit.cabal
- - cabal install --only-dependencies --enable-tests --dry -v > installplan.txt
- - sed -i -e 's/uom-plugin >= 0.1.0/uom-plugin >= 0.1.1/' orbit.cabal
 
    # Install git version of uom-plugin instead
- - sed -i -e '1,/.*uom-plugin.*/d' installplan.txt; cat installplan.txt
  - git clone https://github.com/adamgundry/uom-plugin.git uom-plugin
  - cd uom-plugin
  - git checkout de632726bc82b078c23c65f305d0435eefa7acbf
  - cd ..
- - cabal install uom-plugin/uom-plugin/uom-plugin.cabal --dry -v >> installplan.txt
- - cat installplan.txt
+ - cabal install uom-plugin/uom-plugin/uom-plugin.cabal -v
+
+ - cabal install --only-dependencies --enable-tests --dry -v > installplan.txt
 
 # Install code coverage tool
  - cabal install hpc-coveralls --dry -v >> installplan.txt
