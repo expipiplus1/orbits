@@ -174,18 +174,21 @@ isValid o = e >= 0 &&
             ((e == 0) `iff` (periapsisSpecifier o == Circular)) &&
             q > [u|0 m|] &&
             μ > [u|0 m^3 s^-2|]
-  where iff = (==) :: Bool -> Bool -> Bool
-        e = eccentricity o
-        q = periapsis o
-        μ = primaryGravitationalParameter o
+  where
+    iff = (==) :: Bool -> Bool -> Bool
+    e = eccentricity o
+    q = periapsis o
+    μ = primaryGravitationalParameter o
 
 -- | 'classify' is a funciton which returns the orbit's class.
 classify :: (Num a, Ord a) => Orbit a -> Classification
-classify o | e < 1  = Elliptic
-           | e == 1 = Parabolic
-           | e > 1  = Hyperbolic
-           | otherwise = error "classify"
-  where e = eccentricity o
+classify o
+  | e < 1 = Elliptic
+  | e == 1 = Parabolic
+  | e > 1 = Hyperbolic
+  | otherwise = error "classify"
+  where
+    e = eccentricity o
 
 -- | Calculate the semi-major axis, a, of the 'Orbit'. Returns 'Nothing' when
 -- given a parabolic orbit for which there is no semi-major axis. Note that the

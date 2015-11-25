@@ -39,47 +39,51 @@ instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (Orbit a) where
 
 instance (Num a, Ord a, Arbitrary a) => Arbitrary (CircularOrbit a) where
   arbitrary =
-    do let eccentricity = 0
-       PositiveQuantity periapsis <- arbitrary
-       inclinationSpecifier <- arbitrary
-       let periapsisSpecifier = Circular
-       PositiveQuantity primaryGravitationalParameter <- arbitrary
-       pure . CircularOrbit $ Orbit{..}
+    do
+      let eccentricity = 0
+      PositiveQuantity periapsis <- arbitrary
+      inclinationSpecifier <- arbitrary
+      let periapsisSpecifier = Circular
+      PositiveQuantity primaryGravitationalParameter <- arbitrary
+      pure . CircularOrbit $ Orbit { .. }
   shrink (CircularOrbit o) = CircularOrbit <$> shrinkOrbit o
 
 instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (EllipticOrbit a) where
   arbitrary =
-    do eccentricity <- choose (0, 1) `suchThat` (/= 1)
-       PositiveQuantity periapsis <- arbitrary
-       inclinationSpecifier <- arbitrary
-       periapsisSpecifier <- arbitrary
-       PositiveQuantity primaryGravitationalParameter <- arbitrary
-       pure . EllipticOrbit $ Orbit{..}
+    do
+      eccentricity <- choose (0, 1) `suchThat` (/= 1)
+      PositiveQuantity periapsis <- arbitrary
+      inclinationSpecifier <- arbitrary
+      periapsisSpecifier <- arbitrary
+      PositiveQuantity primaryGravitationalParameter <- arbitrary
+      pure . EllipticOrbit $ Orbit { .. }
   shrink (EllipticOrbit o) = EllipticOrbit <$> shrinkOrbit o
 
 instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (ParabolicOrbit a) where
   arbitrary =
-    do let eccentricity = 1
-       PositiveQuantity periapsis <- arbitrary
-       inclinationSpecifier <- arbitrary
-       periapsisSpecifier <- arbitrary
-       PositiveQuantity primaryGravitationalParameter <- arbitrary
-       pure . ParabolicOrbit $ Orbit{..}
+    do
+      let eccentricity = 1
+      PositiveQuantity periapsis <- arbitrary
+      inclinationSpecifier <- arbitrary
+      periapsisSpecifier <- arbitrary
+      PositiveQuantity primaryGravitationalParameter <- arbitrary
+      pure . ParabolicOrbit $ Orbit { .. }
   shrink (ParabolicOrbit o) = ParabolicOrbit <$> shrinkOrbit o
 
 instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (HyperbolicOrbit a) where
   arbitrary =
-    do eccentricity <- arbitrary `suchThat` (> 1)
-       PositiveQuantity periapsis <- arbitrary
-       inclinationSpecifier <- arbitrary
-       periapsisSpecifier <- arbitrary
-       PositiveQuantity primaryGravitationalParameter <- arbitrary
-       pure . HyperbolicOrbit $ Orbit{..}
+    do
+      eccentricity <- arbitrary `suchThat` (> 1)
+      PositiveQuantity periapsis <- arbitrary
+      inclinationSpecifier <- arbitrary
+      periapsisSpecifier <- arbitrary
+      PositiveQuantity primaryGravitationalParameter <- arbitrary
+      pure . HyperbolicOrbit $ Orbit { .. }
   shrink (HyperbolicOrbit o) = HyperbolicOrbit <$> shrinkOrbit o
 
 instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
   arbitrary = oneof [pure NonInclined, Inclined <$> arbitrary <*> arbitrary]
-  shrink Inclined{..} = [NonInclined]
+  shrink Inclined { .. } = [NonInclined]
   shrink NonInclined = []
 
 -- | The instnace of Arbitrary for PeriapsisSpecifier doesn't generate Circular
