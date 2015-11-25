@@ -7,13 +7,19 @@ module Main
   ( main
   ) where
 
+import Data.CReal (CReal)
+import Data.CReal.QuickCheck ()
 import Data.Maybe (fromJust)
-import Data.UnitsOfMeasure (u)
+import Data.UnitsOfMeasure (u, (*:), negate')
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
 import Test.Tasty (testGroup, TestTree)
 import Test.Tasty.QuickCheck (testProperty, (===))
 import Test.Tasty.TH (defaultMainGenerator)
+
+{-# ANN module "HLint: ignore Reduce duplication" #-}
+
+type Exact = CReal 64
 
 test_sanity :: [TestTree]
 test_sanity = [ testProperty "circular isValid"
@@ -54,6 +60,35 @@ test_semiMajorAxis = [ testProperty "circular"
                      , testProperty "hyperbolic"
                          (\(HyperbolicOrbit o) ->
                             fromJust (semiMajorAxis (o :: Orbit Double)) < [u|0m|])
+                     ]
+
+test_semiMinorAxis :: [TestTree]
+test_semiMinorAxis = [ testGroup "range"
+                         [ testProperty "elliptic: b > 0"
+                             (\(EllipticOrbit o) ->
+                                semiMinorAxis (o :: Orbit Double) > [u|0m|])
+                         , testProperty "parabolic: b = 0"
+                             (\(ParabolicOrbit o) ->
+                                semiMinorAxis (o :: Orbit Double) === [u|0m|])
+                         , testProperty "hyperbolic: b < 0"
+                             (\(HyperbolicOrbit o) ->
+                                semiMinorAxis (o :: Orbit Double) < [u|0m|])
+                         ]
+                     , testProperty "semiMinorAxis circular = q"
+                         (\(CircularOrbit o) ->
+                            semiMinorAxis (o :: Orbit Double) === periapsis o)
+                     , testGroup "b^2 = a * l"
+                         [ testProperty "elliptic"
+                             (\(EllipticOrbit o) -> let a = fromJust (semiMajorAxis (o :: Orbit Exact))
+                                                        b = semiMinorAxis o
+                                                        l = semiLatusRectum o
+                                                    in b *: b === a *: l)
+                         , testProperty "hyperbolic"
+                             (\(HyperbolicOrbit o) -> let a = fromJust (semiMajorAxis (o :: Orbit Exact))
+                                                          b = semiMinorAxis o
+                                                          l = semiLatusRectum o
+                                                      in b *: b === negate' (a *: l))
+                         ]
                      ]
 
 main :: IO ()

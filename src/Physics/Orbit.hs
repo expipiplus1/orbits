@@ -27,6 +27,8 @@ module Physics.Orbit
   , classify
     -- ** Orbital elements
   , semiMajorAxis
+  , semiMinorAxis
+  , semiLatusRectum
 
     -- * Unit synonyms
   , Time
@@ -189,8 +191,29 @@ classify o | e < 1  = Elliptic
 -- given a parabolic orbit for which there is no semi-major axis. Note that the
 -- semi-major axis of a hyperbolic orbit is negative.
 semiMajorAxis :: (Fractional a, Ord a) => Orbit a -> Maybe (Distance a)
-semiMajorAxis o = case classify o of
-                    Parabolic -> Nothing
-                    _ -> Just $ q /: (1 -: e)
-  where q = periapsis o
-        e = eccentricity o
+semiMajorAxis o =
+  case classify o of
+    Parabolic -> Nothing
+    _         -> Just $ q /: (1 -: e)
+  where
+    q = periapsis o
+    e = eccentricity o
+
+-- | Calculate the semi-minor axis, b, of the 'Orbit'. Like 'semiMajorAxis'
+-- @\'semiMinorAxis\' o@ is negative when @o@ is a hyperbolic orbit. In the
+-- case of a parabolic orbit 'semiMinorAxis' returns 0m.
+semiMinorAxis :: (Floating a, Ord a) => Orbit a -> Distance a
+semiMinorAxis o =
+  case classify o of
+    Elliptic   -> a *: sqrt' (1 -: e ^ (2::Int))
+    Parabolic  -> [u|0m|]
+    Hyperbolic -> a *: sqrt' (e ^ (2::Int) -: 1)
+  where
+    e = eccentricity o
+    Just a = semiMajorAxis o
+
+-- | Calculate the semiLatusRectum, l, of the 'Orbit'
+semiLatusRectum :: (Num a) => Orbit a -> Distance a
+semiLatusRectum orbit = e *: q +: q
+  where q = periapsis orbit
+        e = eccentricity orbit

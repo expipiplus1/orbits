@@ -16,17 +16,26 @@ import Physics.Orbit (Orbit(..), InclinationSpecifier(..), PeriapsisSpecifier(..
 import System.Random (Random)
 import Test.QuickCheck (Arbitrary(..), oneof, choose, suchThat)
 
-newtype CircularOrbit a = CircularOrbit (Orbit a)
+newtype CircularOrbit a = CircularOrbit {getCircularOrbit :: Orbit a}
   deriving(Show, Eq)
 
-newtype EllipticOrbit a = EllipticOrbit (Orbit a)
+newtype EllipticOrbit a = EllipticOrbit {getEllipticOrbit :: Orbit a}
   deriving(Show, Eq)
 
-newtype ParabolicOrbit a = ParabolicOrbit (Orbit a)
+newtype ParabolicOrbit a = ParabolicOrbit {getParabolicOrbit :: Orbit a}
   deriving(Show, Eq)
 
-newtype HyperbolicOrbit a = HyperbolicOrbit (Orbit a)
+newtype HyperbolicOrbit a = HyperbolicOrbit {getHyperbolicOrbit :: Orbit a}
   deriving(Show, Eq)
+
+instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (Orbit a) where
+  arbitrary = oneof
+                [ getCircularOrbit <$> arbitrary
+                , getEllipticOrbit <$> arbitrary
+                , getParabolicOrbit <$> arbitrary
+                , getHyperbolicOrbit <$> arbitrary
+                ]
+  shrink = shrinkOrbit
 
 instance (Num a, Ord a, Arbitrary a) => Arbitrary (CircularOrbit a) where
   arbitrary =
