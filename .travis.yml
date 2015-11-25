@@ -49,9 +49,10 @@ install:
  - cd uom-plugin
  - git checkout de632726bc82b078c23c65f305d0435eefa7acbf
  - cd ..
+ - cabal install uom-plugin/uom-plugin/uom-plugin.cabal -v --dry > installplan.txt
  - cabal install uom-plugin/uom-plugin/uom-plugin.cabal -v
 
- - cabal install --only-dependencies --enable-tests --dry -v > installplan.txt
+ - cabal install --only-dependencies --enable-tests --dry -v >> installplan.txt
 
 # Install code coverage tool
  - cabal install hpc-coveralls --dry -v >> installplan.txt
@@ -70,7 +71,6 @@ install:
      echo "cabal build-cache MISS";
      rm -rf $HOME/.cabsnap;
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-     cabal install uom-plugin/uom-plugin/uom-plugin.cabal -v;
      cabal install --only-dependencies --enable-tests;
      cabal install hpc-coveralls;
    fi
@@ -100,5 +100,8 @@ script:
 # `cabal install --force-reinstalls dist/*-*.tar.gz`
  - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
    (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+
+after_script:
+  - $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test test
 
 # EOF
