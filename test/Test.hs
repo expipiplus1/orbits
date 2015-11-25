@@ -14,7 +14,7 @@ import Data.UnitsOfMeasure (u, (*:), negate')
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
 import Test.Tasty (testGroup, TestTree)
-import Test.Tasty.QuickCheck (testProperty, (===))
+import Test.Tasty.QuickCheck (testProperty, (===), (==>))
 import Test.Tasty.TH (defaultMainGenerator)
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
@@ -90,6 +90,22 @@ test_semiMinorAxis = [ testGroup "range"
                                                       in b *: b === negate' (a *: l))
                          ]
                      ]
+
+test_apoapsis :: [TestTree]
+test_apoapsis = [ testProperty "ap > q"
+                    (\(EllipticOrbit o) ->
+                       eccentricity (o :: Orbit Double) /= 0
+                       ==> fromJust (apoapsis o) > periapsis o)
+                , testProperty "circular: ap = q"
+                    (\(CircularOrbit o) ->
+                       fromJust (apoapsis (o :: Orbit Double)) === periapsis o)
+                , testProperty "parabolic: no ap"
+                    (\(ParabolicOrbit o) ->
+                       apoapsis (o :: Orbit Double) === Nothing)
+                , testProperty "hyperbolic: no ap"
+                    (\(HyperbolicOrbit o) ->
+                       apoapsis (o :: Orbit Double) === Nothing)
+                ]
 
 main :: IO ()
 main = $(defaultMainGenerator)

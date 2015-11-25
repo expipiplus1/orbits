@@ -26,6 +26,7 @@ module Physics.Orbit
   , isValid
   , classify
     -- ** Orbital elements
+  , apoapsis
   , semiMajorAxis
   , semiMinorAxis
   , semiLatusRectum
@@ -220,3 +221,15 @@ semiLatusRectum :: (Num a) => Orbit a -> Distance a
 semiLatusRectum orbit = e *: q +: q
   where q = periapsis orbit
         e = eccentricity orbit
+
+-- | Calculate the distance between the bodies when they are at their most
+-- distant. 'apoapsis' returns 'Nothing' when given a parabolic or hyperbolic
+-- orbit.
+apoapsis :: (Fractional a, Ord a) => Orbit a -> Maybe (Distance a)
+apoapsis o =
+  case classify o of
+    Elliptic -> Just $ a *: (1 +: e)
+    _        -> Nothing
+  where
+    Just a = semiMajorAxis o
+    e = eccentricity o
