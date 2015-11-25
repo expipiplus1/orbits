@@ -21,9 +21,12 @@ module Physics.Orbit
   , PeriapsisSpecifier(..)
   , Classification(..)
 
-    -- * Basic properties of the orbit
+    -- * Functions for dealing with orbits
+    -- ** Utilities
   , isValid
   , classify
+    -- ** Orbital elements
+  , semiMajorAxis
 
     -- * Unit synonyms
   , Time
@@ -181,3 +184,13 @@ classify o | e < 1  = Elliptic
            | e > 1  = Hyperbolic
            | otherwise = error "classify"
   where e = eccentricity o
+
+-- | Calculate the semi-major axis, a, of the 'Orbit'. Returns 'Nothing' when
+-- given a parabolic orbit for which there is no semi-major axis. Note that the
+-- semi-major axis of a hyperbolic orbit is negative.
+semiMajorAxis :: (Fractional a, Ord a) => Orbit a -> Maybe (Distance a)
+semiMajorAxis o = case classify o of
+                    Parabolic -> Nothing
+                    _ -> Just $ q /: (1 -: e)
+  where q = periapsis o
+        e = eccentricity o

@@ -1,8 +1,14 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
+
 module Main
   ( main
   ) where
 
+import Data.Maybe (fromJust)
+import Data.UnitsOfMeasure (u)
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
 import Test.Tasty (testGroup, TestTree)
@@ -35,6 +41,20 @@ test_classify = [ testProperty "circular"
                        classify (o :: Orbit Double) === Hyperbolic)
                 ]
 
+test_semiMajorAxis :: [TestTree]
+test_semiMajorAxis = [ testProperty "circular"
+                         (\(CircularOrbit o) ->
+                            fromJust (semiMajorAxis (o :: Orbit Double)) === periapsis o)
+                     , testProperty "elliptic"
+                         (\(EllipticOrbit o) ->
+                            fromJust (semiMajorAxis (o :: Orbit Double)) > [u|0m|])
+                     , testProperty "parabolic"
+                         (\(ParabolicOrbit o) ->
+                            semiMajorAxis (o :: Orbit Double) === Nothing)
+                     , testProperty "hyperbolic"
+                         (\(HyperbolicOrbit o) ->
+                            fromJust (semiMajorAxis (o :: Orbit Double)) < [u|0m|])
+                     ]
 
 main :: IO ()
 main = $(defaultMainGenerator)
