@@ -53,7 +53,7 @@ install:
  - cd uom-plugin
  - git checkout de632726bc82b078c23c65f305d0435eefa7acbf
  - cd ..
- - cabal install uom-plugin/uom-plugin/uom-plugin.cabal --enable-tests --dry -v >> installplan.txt
+ - cabal install uom-plugin/uom-plugin/uom-plugin.cabal --dry -v >> installplan.txt
  - cat installplan.txt
 
 # Install code coverage tool
@@ -73,7 +73,7 @@ install:
      echo "cabal build-cache MISS";
      rm -rf $HOME/.cabsnap;
      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-     cabal install uom-plugin/uom-plugin/uom-plugin.cabal --enable-tests -v;
+     cabal install uom-plugin/uom-plugin/uom-plugin.cabal -v;
      cabal install --only-dependencies --enable-tests;
      cabal install hpc-coveralls;
    fi
