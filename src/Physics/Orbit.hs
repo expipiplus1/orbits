@@ -23,6 +23,7 @@ module Physics.Orbit
 
     -- * Basic properties of the orbit
   , isValid
+  , classify
 
     -- * Unit synonyms
   , Time
@@ -172,3 +173,11 @@ isValid o = e >= 0 &&
         e = eccentricity o
         q = periapsis o
         μ = primaryGravitationalParameter o
+
+-- | 'classify' is a funciton which returns the orbit's class.
+classify :: (Num a, Ord a) => Orbit a -> Classification
+classify o | e < 1  = Elliptic
+           | e == 1 = Parabolic
+           | e > 1  = Hyperbolic
+           | otherwise = error "classify"
+  where e = eccentricity o
