@@ -51,6 +51,7 @@ test-suite test
     Test.hs
   other-modules:
     Physics.Orbit.QuickCheck
+    Physics.Radian
     Data.CReal.QuickCheck
     Data.UnitsOfMeasure.Extra
     Data.UnitsOfMeasure.QuickCheck

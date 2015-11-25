@@ -32,6 +32,8 @@ module Physics.Orbit
   , semiMajorAxis
   , semiMinorAxis
   , semiLatusRectum
+  , hyperbolicApproachAngle
+  , hyperbolicDepartureAngle
 
     -- * Unit synonyms
   , Time
@@ -236,7 +238,7 @@ apoapsis o =
     Just a = semiMajorAxis o
     e = eccentricity o
 
--- | Calculate the mean motion, n, of an elliptical or hyperbolic orbit.
+-- | Calculate the mean motion, n, of an elliptic or hyperbolic orbit.
 --
 -- 'meanMotion' returns Nothing if given a parabolic orbit.
 meanMotion :: (Floating a, Ord a) => Orbit a -> Maybe (Quantity a [u| rad/s |])
@@ -250,7 +252,7 @@ meanMotion o =
     μ = primaryGravitationalParameter o
     n = ([u|1 rad|] *:) . sqrt' . abs' $ μ /: (cube a)
 
--- | Calculate the orbital period of an elliptical orbit.
+-- | Calculate the orbital period of an elliptic orbit.
 --
 -- 'period' returns Nothing if given a parabolic or hyperbolic orbit.
 --
@@ -264,3 +266,32 @@ period o =
   where
     Just n = meanMotion o
     p = turn /: n
+
+-- | Calculate the angle at which a body leaves the system when on a hyperbolic
+-- trajectory. This is the limit of the true anomaly as time tends towards
+-- infinity. The departure angle is in the closed range (π/2..π).
+--
+-- This is the negation of the approach angle.
+--
+-- 'hyperbolicDepartureAngle' returns Nothing when given an elliptic orbit and
+-- π when given a parabolic orbit.
+hyperbolicDepartureAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
+hyperbolicDepartureAngle o =
+  case classify o of
+    Hyperbolic ->
+      let e = eccentricity o
+          θ = ([u|1rad|] *:) $ acos (-1 / e)
+      in Just θ
+    Parabolic -> Just (turn /: 2)
+    _ -> Nothing
+
+-- | Calculate the angle at which a body leaves the system when on a hyperbolic
+-- trajectory. This is the limit of the true anomaly as time tends towards
+-- -infinity. The approach angle is in the closed range (-π..π/2).
+--
+-- This is the negation of the departure angle.
+--
+-- 'hyperbolicApproachAngle' returns Nothing when given a non-hyperbolic orbit
+-- and -π when given a parabolic orbit.
+hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
+hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle

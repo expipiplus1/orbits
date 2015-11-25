@@ -13,6 +13,7 @@ import Data.Maybe (fromJust)
 import Data.UnitsOfMeasure.Extra (u, (*:), (/:), negate', square, cube)
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
+import Physics.Radian (halfTurn)
 import Test.Tasty (testGroup, TestTree)
 import Test.Tasty.QuickCheck (testProperty, (===), (==>))
 import Test.Tasty.TH (defaultMainGenerator)
@@ -136,6 +137,30 @@ test_period = [ testProperty "p > 0"
                     (\(HyperbolicOrbit o) ->
                        period (o :: Orbit Double) === Nothing)
               ]
+
+-- TODO: Put converge test here
+test_hyperbolicAngles :: [TestTree]
+test_hyperbolicAngles = [ testProperty "parabolic approach"
+                            (\(ParabolicOrbit o) ->
+                               fromJust
+                                 (hyperbolicApproachAngle (o :: Orbit Double))
+                                 === negate' halfTurn)
+                        , testProperty "parabolic departure"
+                            (\(ParabolicOrbit o) ->
+                               fromJust
+                                 (hyperbolicDepartureAngle (o :: Orbit Double))
+                                 === halfTurn)
+                        , testProperty "hyperbolic symmetry"
+                            (\(HyperbolicOrbit o) ->
+                               fromJust (hyperbolicDepartureAngle (o :: Orbit Double))
+                               === negate' (fromJust (hyperbolicApproachAngle o)))
+                        , testProperty "elliptic: no approach"
+                            (\(EllipticOrbit o) ->
+                               hyperbolicApproachAngle (o :: Orbit Double) === Nothing)
+                        , testProperty "elliptic: no departure"
+                            (\(EllipticOrbit o) ->
+                               hyperbolicDepartureAngle (o :: Orbit Double) === Nothing)
+                        ]
 
 main :: IO ()
 main = $(defaultMainGenerator)
