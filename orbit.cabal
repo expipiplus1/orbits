@@ -58,3 +58,20 @@ test-suite test
     tasty-th         >= 0.1   && < 0.2,
     uom-plugin       >= 0.1.1 && < 0.2,
     orbit
+
+test-suite doctest
+  default-language:
+    Haskell2010
+  type:
+    exitcode-stdio-1.0
+  ghc-options:
+    -Wall -threaded
+  hs-source-dirs:
+    test
+  main-is:
+    DocTest.hs
+  build-depends:
+    base,
+    directory >= 1.0 && < 1.3,
+    doctest   >= 0.8 && < 0.11,
+    filepath  >= 1.3 && < 1.5
