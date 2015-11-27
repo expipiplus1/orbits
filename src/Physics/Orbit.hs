@@ -252,7 +252,7 @@ meanMotion o =
     μ = primaryGravitationalParameter o
     n = ([u|1 rad|] *:) . sqrt' . abs' $ μ /: (cube a)
 
--- | Calculate the orbital period of an elliptic orbit.
+-- | Calculate the orbital period, p, of an elliptic orbit.
 --
 -- 'period' returns Nothing if given a parabolic or hyperbolic orbit.
 --
