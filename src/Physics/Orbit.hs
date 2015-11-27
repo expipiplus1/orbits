@@ -255,9 +255,6 @@ meanMotion o =
 -- | Calculate the orbital period, p, of an elliptic orbit.
 --
 -- 'period' returns Nothing if given a parabolic or hyperbolic orbit.
---
--- >>> convert <$> period earthOrbit :: Maybe (Quantity Double [u| d |])
--- Just [u| 365.25... |]
 period :: (Floating a, Ord a) => Orbit a -> Maybe (Time a)
 period o =
   case classify o of
