@@ -67,6 +67,8 @@ install:
      rm -rfv .ghc;
      cp -a $HOME/.cabsnap/ghc $HOME/.ghc;
      cp -a $HOME/.cabsnap/lib $HOME/.cabsnap/share $HOME/.cabsnap/bin $HOME/.cabal/;
+     cabal install --only-dependencies --enable-tests;
+     cabal install hpc-coveralls;
    else
      echo "cabal build-cache MISS";
      rm -rf $HOME/.cabsnap;
