@@ -43,22 +43,13 @@ install:
    fi
  - travis_retry cabal update -v
  - sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
-
-   # Install git version of uom-plugin instead
- - git clone https://github.com/adamgundry/uom-plugin.git uom-plugin
- - cd uom-plugin
- - git checkout de632726bc82b078c23c65f305d0435eefa7acbf
- - cd ..
- - cabal install uom-plugin/uom-plugin/uom-plugin.cabal -v --dry > installplan.txt
- - cabal install uom-plugin/uom-plugin/uom-plugin.cabal -v
-
- - cabal install --only-dependencies --enable-tests --dry -v >> installplan.txt
+ - cabal install --only-dependencies --enable-tests --dry -v > installplan.txt
 
 # Install code coverage tool
  - cabal install hpc-coveralls --dry -v >> installplan.txt
 
  - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
- - sed -i -e 's/(via. .*) /d' installplan.txt; cat installplan.txt
+ - sed -i -e '1,/(via: .*) /d' installplan.txt; cat installplan.txt
 
 # check whether current requested install-plan matches cached package-db snapshot
  - if diff -u $HOME/.cabsnap/installplan.txt installplan.txt;
@@ -67,8 +58,6 @@ install:
      rm -rfv .ghc;
      cp -a $HOME/.cabsnap/ghc $HOME/.ghc;
      cp -a $HOME/.cabsnap/lib $HOME/.cabsnap/share $HOME/.cabsnap/bin $HOME/.cabal/;
-     cabal install --only-dependencies --enable-tests;
-     cabal install hpc-coveralls;
    else
      echo "cabal build-cache MISS";
      rm -rf $HOME/.cabsnap;
@@ -104,6 +93,6 @@ script:
    (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
 
 after_script:
-  - $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test test
+  - $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test test doctest
 
 # EOF
