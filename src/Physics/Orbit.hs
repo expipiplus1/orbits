@@ -26,6 +26,8 @@ module Physics.Orbit
   , apoapsis
   , meanMotion
   , period
+  , arealVelocity
+    -- *** Geometry
   , semiMajorAxis
   , semiMinorAxis
   , semiLatusRectum
@@ -289,3 +291,12 @@ hyperbolicDepartureAngle o =
 -- and -π when given a parabolic orbit.
 hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
+
+-- | Calculate the areal velocity, A, of the orbit.
+--
+-- The areal velocity is the area <https://xkcd.com/21/ swept out> by the line
+-- between the orbiting body and the primary per second.
+arealVelocity :: (Ord a, Floating a) => Orbit a -> Quantity a [u|m^2/s|]
+arealVelocity o = sqrt' (l *: μ) /: 2
+  where l = semiLatusRectum o
+        μ = primaryGravitationalParameter o

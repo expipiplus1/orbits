@@ -162,6 +162,16 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
                                hyperbolicDepartureAngle (o :: Orbit Double) === Nothing)
                         ]
 
+-- TODO: Put parabolic and hyperbolic tests here
+test_areal :: [TestTree]
+test_areal = [ testProperty "elliptic areal area"
+                 (\(EllipticOrbit o) -> let Just a = semiMajorAxis (o :: Orbit Exact)
+                                            b = semiMinorAxis o
+                                            area = pi *: a *: b
+                                            Just p = period o
+                                        in area === p *: arealVelocity o)
+             ]
+
 main :: IO ()
 main = $(defaultMainGenerator)
 
