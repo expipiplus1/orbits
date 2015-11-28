@@ -1,3 +1,4 @@
+-- Extensions for uom-plugin
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -6,9 +7,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
-
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
+
+-- Others
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Types and functions for dealing with Kepler orbits.
 module Physics.Orbit
@@ -17,6 +20,20 @@ module Physics.Orbit
   , InclinationSpecifier(..)
   , PeriapsisSpecifier(..)
   , Classification(..)
+
+    -- * Functions for dealing with orbits
+    -- ** Utilities
+  , isValid
+  , classify
+    -- ** Orbital elements
+  , apoapsis
+  , meanMotion
+  , period
+  , semiMajorAxis
+  , semiMinorAxis
+  , semiLatusRectum
+  , hyperbolicApproachAngle
+  , hyperbolicDepartureAngle
 
     -- * Unit synonyms
   , Time
@@ -29,11 +46,15 @@ module Physics.Orbit
   , Velocity
   ) where
 
-import Data.UnitsOfMeasure
+import Data.UnitsOfMeasure.Extra
 import Data.UnitsOfMeasure.Defs ()
 import Data.UnitsOfMeasure.Show ()
 import Linear.V3 (V3)
-import Physics.Radian ()
+import Physics.Radian (turn)
+
+--------------------------------------------------------------------------------
+-- Types
+--------------------------------------------------------------------------------
 
 -- | A measure in seconds.
 type Time a     = Quantity a [u| s |]
@@ -146,3 +167,128 @@ data Classification = -- | 0 <= e < 1
                     | Hyperbolic
   deriving (Show, Read, Eq)
 
+--------------------------------------------------------------------------------
+-- Functions
+--------------------------------------------------------------------------------
+
+-- | Return true is the orbit is valid and false if it is invalid. The behavior
+-- of all the other functions in this module is undefined when given an invalid
+-- orbit.
+isValid :: (Ord a, Num a) => Orbit a -> Bool
+isValid o = e >= 0 &&
+            ((e == 0) `iff` (periapsisSpecifier o == Circular)) &&
+            q > [u|0 m|] &&
+            μ > [u|0 m^3 s^-2|]
+  where
+    iff = (==) :: Bool -> Bool -> Bool
+    e = eccentricity o
+    q = periapsis o
+    μ = primaryGravitationalParameter o
+
+-- | 'classify' is a funciton which returns the orbit's class.
+classify :: (Num a, Ord a) => Orbit a -> Classification
+classify o
+  | e < 1 = Elliptic
+  | e == 1 = Parabolic
+  | e > 1 = Hyperbolic
+  | otherwise = error "classify"
+  where
+    e = eccentricity o
+
+-- | Calculate the semi-major axis, a, of the 'Orbit'. Returns 'Nothing' when
+-- given a parabolic orbit for which there is no semi-major axis. Note that the
+-- semi-major axis of a hyperbolic orbit is negative.
+semiMajorAxis :: (Fractional a, Ord a) => Orbit a -> Maybe (Distance a)
+semiMajorAxis o =
+  case classify o of
+    Parabolic -> Nothing
+    _         -> Just $ q /: (1 -: e)
+  where
+    q = periapsis o
+    e = eccentricity o
+
+-- | Calculate the semi-minor axis, b, of the 'Orbit'. Like 'semiMajorAxis'
+-- @\'semiMinorAxis\' o@ is negative when @o@ is a hyperbolic orbit. In the
+-- case of a parabolic orbit 'semiMinorAxis' returns 0m.
+semiMinorAxis :: (Floating a, Ord a) => Orbit a -> Distance a
+semiMinorAxis o =
+  case classify o of
+    Elliptic   -> a *: sqrt' (1 -: e ^ (2::Int))
+    Parabolic  -> [u|0m|]
+    Hyperbolic -> a *: sqrt' (e ^ (2::Int) -: 1)
+  where
+    e = eccentricity o
+    Just a = semiMajorAxis o
+
+-- | Calculate the semiLatusRectum, l, of the 'Orbit'
+semiLatusRectum :: (Num a) => Orbit a -> Distance a
+semiLatusRectum orbit = e *: q +: q
+  where q = periapsis orbit
+        e = eccentricity orbit
+
+-- | Calculate the distance between the bodies when they are at their most
+-- distant. 'apoapsis' returns 'Nothing' when given a parabolic or hyperbolic
+-- orbit.
+apoapsis :: (Fractional a, Ord a) => Orbit a -> Maybe (Distance a)
+apoapsis o =
+  case classify o of
+    Elliptic -> Just $ a *: (1 +: e)
+    _        -> Nothing
+  where
+    Just a = semiMajorAxis o
+    e = eccentricity o
+
+-- | Calculate the mean motion, n, of an elliptic or hyperbolic orbit.
+--
+-- 'meanMotion' returns Nothing if given a parabolic orbit.
+meanMotion :: (Floating a, Ord a) => Orbit a -> Maybe (Quantity a [u| rad/s |])
+meanMotion o =
+  case classify o of
+    Elliptic   -> Just n
+    Hyperbolic -> Just n
+    _          -> Nothing
+  where
+    Just a = semiMajorAxis o
+    μ = primaryGravitationalParameter o
+    n = ([u|1 rad|] *:) . sqrt' . abs' $ μ /: (cube a)
+
+-- | Calculate the orbital period, p, of an elliptic orbit.
+--
+-- 'period' returns Nothing if given a parabolic or hyperbolic orbit.
+period :: (Floating a, Ord a) => Orbit a -> Maybe (Time a)
+period o =
+  case classify o of
+    Elliptic -> Just p
+    _ -> Nothing
+  where
+    Just n = meanMotion o
+    p = turn /: n
+
+-- | Calculate the angle at which a body leaves the system when on a hyperbolic
+-- trajectory. This is the limit of the true anomaly as time tends towards
+-- infinity. The departure angle is in the closed range (π/2..π).
+--
+-- This is the negation of the approach angle.
+--
+-- 'hyperbolicDepartureAngle' returns Nothing when given an elliptic orbit and
+-- π when given a parabolic orbit.
+hyperbolicDepartureAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
+hyperbolicDepartureAngle o =
+  case classify o of
+    Hyperbolic ->
+      let e = eccentricity o
+          θ = ([u|1rad|] *:) $ acos (-1 / e)
+      in Just θ
+    Parabolic -> Just (turn /: 2)
+    _ -> Nothing
+
+-- | Calculate the angle at which a body leaves the system when on a hyperbolic
+-- trajectory. This is the limit of the true anomaly as time tends towards
+-- -infinity. The approach angle is in the closed range (-π..π/2).
+--
+-- This is the negation of the departure angle.
+--
+-- 'hyperbolicApproachAngle' returns Nothing when given a non-hyperbolic orbit
+-- and -π when given a parabolic orbit.
+hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
+hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle

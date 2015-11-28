@@ -9,9 +9,17 @@
 
 -- | This module just exports instances for the "rad" unit.
 module Physics.Radian
-  (
+  ( turn
+  , halfTurn
   ) where
 
 import Data.UnitsOfMeasure
 
 [u| rad |]
+
+-- | One complete revolution in radians
+turn :: Floating a => Quantity a [u|rad|]
+turn = 2 *: halfTurn
+
+halfTurn :: Floating a => Quantity a [u|rad|]
+halfTurn = [u|rad|] pi
