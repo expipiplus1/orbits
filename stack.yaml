@@ -1,12 +1,7 @@
 resolver: nightly-2015-11-26
 packages:
 - '.'
-- location:
-    git: https://github.com/adamgundry/uom-plugin
-    commit: de632726bc82b078c23c65f305d0435eefa7acbf
-  extra-dep: true
-  subdirs:
-  - uom-plugin
 extra-deps:
 - units-parser-0.1.0.0
+- uom-plugin-0.1.1.0
 
