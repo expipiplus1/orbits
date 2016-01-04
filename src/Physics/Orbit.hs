@@ -10,9 +10,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
 
--- Others
-{-# LANGUAGE RecordWildCards #-}
-
 -- | Types and functions for dealing with Kepler orbits.
 module Physics.Orbit
   ( -- * The Orbit data type and dependencies
