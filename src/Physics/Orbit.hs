@@ -247,7 +247,7 @@ meanMotion o =
   where
     Just a = semiMajorAxis o
     μ = primaryGravitationalParameter o
-    n = ([u|1 rad|] *:) . sqrt' . abs' $ μ /: (cube a)
+    n = convert . sqrt' . abs' $ μ /: cube a
 
 -- | Calculate the orbital period, p, of an elliptic orbit.
 --
@@ -274,7 +274,7 @@ hyperbolicDepartureAngle o =
   case classify o of
     Hyperbolic ->
       let e = eccentricity o
-          θ = ([u|1rad|] *:) $ acos (-1 / e)
+          θ = convert $ acos (-1 / e)
       in Just θ
     Parabolic -> Just (turn /: 2)
     _ -> Nothing
