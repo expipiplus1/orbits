@@ -1,5 +1,5 @@
 cache:
-- "c:\\sr" # stack root, short paths == less problems
+- "c:\\s" # stack root, short paths == less problems
 
 build: off
 
@@ -10,7 +10,7 @@ before_test:
 clone_folder: "c:\\stack"
 environment:
   global:
-    STACK_ROOT: "c:\\sr"
+    STACK_ROOT: "c:\\s"
 
 test_script:
 - stack setup > nul
