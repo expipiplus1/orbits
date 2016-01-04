@@ -15,8 +15,6 @@ module Physics.Radian
 
 import Data.UnitsOfMeasure
 
-[u| rad |]
-
 -- | One complete revolution in radians
 turn :: Floating a => Quantity a [u|rad|]
 turn = 2 *: halfTurn
