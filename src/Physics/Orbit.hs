@@ -261,7 +261,7 @@ period o =
     Just n = meanMotion o
     p = turn /: n
 
--- | Calculate the angle at which a body leaves the system when on a hyperbolic
+-- | Calculate the angle at which a body leaves the system when on an escape
 -- trajectory. This is the limit of the true anomaly as time tends towards
 -- infinity. The departure angle is in the closed range (π/2..π).
 --
