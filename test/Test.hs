@@ -109,15 +109,8 @@ test_apoapsis = [ testProperty "ap > q"
                 ]
 
 test_meanMotion :: [TestTree]
-test_meanMotion = [ testProperty "elliptic: n > 0"
-                      (\(EllipticOrbit o) ->
-                         fromJust (meanMotion (o :: Orbit Double)) > [u|0rad/s|])
-                  , testProperty "hyperbolic: n > 0"
-                      (\(HyperbolicOrbit o) ->
-                         fromJust (meanMotion (o :: Orbit Double)) > [u|0rad/s|])
-                  , testProperty "parabolic: no n"
-                      (\(ParabolicOrbit o) ->
-                         meanMotion (o :: Orbit Double) === Nothing)
+test_meanMotion = [ testProperty "n > 0"
+                      (\o -> meanMotion (o :: Orbit Double) > [u|0rad/s|])
                   ]
 
 test_period :: [TestTree]

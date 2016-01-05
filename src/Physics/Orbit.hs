@@ -235,19 +235,19 @@ apoapsis o =
     Just a = semiMajorAxis o
     e = eccentricity o
 
--- | Calculate the mean motion, n, of an elliptic or hyperbolic orbit.
+-- | Calculate the mean motion, n, of an orbit
 --
--- 'meanMotion' returns Nothing if given a parabolic orbit.
-meanMotion :: (Floating a, Ord a) => Orbit a -> Maybe (Quantity a [u| rad/s |])
+-- This is the rate of change of the mean anomaly with respect to time.
+meanMotion :: (Floating a, Ord a) => Orbit a -> Quantity a [u|rad/s|]
 meanMotion o =
   case classify o of
-    Elliptic   -> Just n
-    Hyperbolic -> Just n
-    _          -> Nothing
+    Elliptic   -> convert $ sqrt' (μ /: cube a)
+    Hyperbolic -> convert $ sqrt' (μ /: negate' (cube a))
+    Parabolic  -> convert $ 2 *: sqrt' (μ /: cube l)
   where
     Just a = semiMajorAxis o
     μ = primaryGravitationalParameter o
-    n = convert . sqrt' . abs' $ μ /: cube a
+    l = semiLatusRectum o
 
 -- | Calculate the orbital period, p, of an elliptic orbit.
 --
@@ -258,10 +258,10 @@ period o =
     Elliptic -> Just p
     _ -> Nothing
   where
-    Just n = meanMotion o
+    n = meanMotion o
     p = turn /: n
 
--- | Calculate the angle at which a body leaves the system when on a hyperbolic
+-- | Calculate the angle at which a body leaves the system when on an escape
 -- trajectory. This is the limit of the true anomaly as time tends towards
 -- infinity. The departure angle is in the closed range (π/2..π).
 --
