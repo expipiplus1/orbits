@@ -1,6 +1,6 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators       #-}
 {-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -13,10 +13,10 @@ module Data.UnitsOfMeasure.Extra
   , divMod'
   ) where
 
-import qualified Data.Fixed as F (div', divMod', mod')
-import Data.Coerce (coerce)
-import Data.UnitsOfMeasure
-import Data.UnitsOfMeasure.Internal (Quantity(..))
+import           Data.Coerce                  (coerce)
+import qualified Data.Fixed                   as F (div', divMod', mod')
+import           Data.UnitsOfMeasure
+import           Data.UnitsOfMeasure.Internal (Quantity (..))
 
 cube :: Num a => Quantity a v -> Quantity a (v ^: 3)
 cube x = x *: x *: x
