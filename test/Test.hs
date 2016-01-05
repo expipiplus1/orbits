@@ -10,7 +10,7 @@ module Main
 import Data.CReal (CReal)
 import Data.CReal.QuickCheck ()
 import Data.Maybe (fromJust)
-import Data.UnitsOfMeasure.Extra (u, (*:), (/:), negate', square, cube)
+import Data.UnitsOfMeasure.Extra (u, (*:), (/:), negate', square, cube, signum')
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
 import Physics.Radian (halfTurn)
@@ -154,6 +154,13 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
                             (\(EllipticOrbit o) ->
                                hyperbolicDepartureAngle (o :: Orbit Double) === Nothing)
                         ]
+
+test_meanAnomalyAtTime :: [TestTree]
+test_meanAnomalyAtTime = [ testProperty "meanAnomaly signum"
+                             (\o t -> signum' (meanAnomalyAtTime (o::Orbit Double) t) === signum' t)
+                         , testProperty "meanAnomaly at t = 0"
+                             (\o -> meanAnomalyAtTime (o::Orbit Double) [u|0s|] === [u|0rad|])
+                         ]
 
 main :: IO ()
 main = $(defaultMainGenerator)
