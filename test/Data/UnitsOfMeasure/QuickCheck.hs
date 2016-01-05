@@ -10,6 +10,7 @@ module Data.UnitsOfMeasure.QuickCheck
 import Data.UnitsOfMeasure.Internal (Quantity(..))
 import System.Random (Random)
 import Test.QuickCheck (Arbitrary(..), Positive(..))
+import Test.QuickCheck.Checkers (EqProp(..), eq)
 
 newtype PositiveQuantity a = PositiveQuantity { getPositiveQuantity :: a }
 
@@ -21,3 +22,5 @@ instance (Num a, Ord a, Arbitrary a) => Arbitrary (PositiveQuantity (Quantity a 
   arbitrary = PositiveQuantity . MkQuantity . getPositive <$> arbitrary
   shrink (PositiveQuantity x) = PositiveQuantity <$> shrink x
 
+instance (Eq a) => EqProp (Quantity a u) where
+  (=-=) = eq

@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
@@ -7,20 +8,24 @@ module Main
   ( main
   ) where
 
+import Data.Coerce (coerce)
 import Data.CReal (CReal)
 import Data.CReal.QuickCheck ()
 import Data.Maybe (fromJust)
 import Data.UnitsOfMeasure.Extra (u, (*:), (/:), negate', square, cube, signum')
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
-import Physics.Radian (halfTurn)
+import Physics.Radian (halfTurn, turn)
 import Test.Tasty (testGroup, TestTree)
-import Test.Tasty.QuickCheck (testProperty, (===), (==>))
+import Test.Tasty.QuickCheck (testProperty, (===), (==>), (.&&.))
+import Test.QuickCheck.Extra ((<=!), (>=!))
 import Test.Tasty.TH (defaultMainGenerator)
+import Test.QuickCheck.Checkers (inverse)
+import WrappedAngle (WrappedAngle(..))
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
 
-type Exact = CReal 64
+type Exact = CReal 32
 
 test_sanity :: [TestTree]
 test_sanity = [ testProperty "circular isValid"
@@ -161,6 +166,27 @@ test_meanAnomalyAtTime = [ testProperty "meanAnomaly signum"
                          , testProperty "meanAnomaly at t = 0"
                              (\o -> meanAnomalyAtTime (o::Orbit Double) [u|0s|] === [u|0rad|])
                          ]
+
+test_eccentricAnomalyAtTime :: [TestTree]
+test_eccentricAnomalyAtTime = [ testProperty "eccentric anomaly range"
+                                 (\(EllipticOrbit o) t ->
+                                   let _E = fromJust (eccentricAnomalyAtTime (o :: Orbit Double) t)
+                                   in _E >=! [u|0rad|] .&&. _E <=! turn)
+                              ]
+
+test_eccentricAnomalyAtMeanAnomaly :: [TestTree]
+test_eccentricAnomalyAtMeanAnomaly = [ testProperty "eccentric anomaly range"
+                                        (\(EllipticOrbit o) _M ->
+                                          let _E = fromJust (eccentricAnomalyAtMeanAnomaly (o :: Orbit Double) _M)
+                                          in _E >=! [u|0rad|] .&&. _E <=! turn)
+                                     ]
+
+test_meanEccentricInverse :: [TestTree]
+test_meanEccentricInverse = [ testProperty "mean eccentric inverse"
+                                (\(EllipticOrbit o) ->
+                                  inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
+                                          (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
+                            ]
 
 main :: IO ()
 main = $(defaultMainGenerator)

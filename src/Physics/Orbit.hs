@@ -33,6 +33,9 @@ module Physics.Orbit
   , hyperbolicDepartureAngle
     -- ** Conversions
   , meanAnomalyAtTime
+  , meanAnomalyAtEccentricAnomaly
+  , eccentricAnomalyAtTime
+  , eccentricAnomalyAtMeanAnomaly
 
     -- * Unit synonyms
   , Time
@@ -48,6 +51,8 @@ module Physics.Orbit
 import Data.UnitsOfMeasure.Extra
 import Data.UnitsOfMeasure.Defs ()
 import Data.UnitsOfMeasure.Show ()
+import Numeric.AD (auto)
+import Numeric.AD.Halley (findZero)
 import Linear.V3 (V3)
 import Physics.Radian (turn)
 
@@ -295,10 +300,53 @@ hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
 
 -- | Calculate the <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>,
--- 'M', at the given time since periapse, t. T may be negative, indicating that
+-- M, at the given time since periapse, t. T may be negative, indicating that
 -- the orbiting body has yet to reach periapse.
 --
 -- The sign of the mean anomaly at time t is the same as the sign of t.
+--
+-- The returned mean anomaly is unbounded.
 meanAnomalyAtTime :: (Floating a, Ord a) => Orbit a -> Time a -> Angle a
 meanAnomalyAtTime o t = t *: n
   where n = meanMotion o
+
+-- | Calculate the eccentric anomaly, E, of an elliptic orbit at time t.
+--
+-- 'eccentricAnomalyAtTime' returns Nothing when given a parabolic or
+-- hyperbolic orbit.
+--
+-- The returned eccentric anomaly is in the range [0..2π]
+eccentricAnomalyAtTime :: (Floating a, Real a) => Orbit a -> Time a -> Maybe (Angle a)
+eccentricAnomalyAtTime o t = case classify o of
+                               Elliptic -> eccentricAnomalyAtMeanAnomaly o . meanAnomalyAtTime o $ t
+                               _ -> Nothing
+
+-- | Calculate the eccentric anomaly, E, of an elliptic orbit when at mean
+-- anomaly M. This function is considerably slower than most other conversion
+-- functions as it uses an iterative method as no closed form solution exists.
+--
+-- The returned eccentric anomaly is in the range [0..2π]
+--
+-- 'eccentricAnomalyAtMeanAnomaly' returns Nothing when given a parabolic or
+-- hyperbolic orbit.
+eccentricAnomalyAtMeanAnomaly :: (Floating a, Real a) => Orbit a -> Angle a -> Maybe (Angle a)
+eccentricAnomalyAtMeanAnomaly o _M = case classify o of
+                                       Elliptic -> Just _E
+                                       _ -> Nothing
+  where wrappedM = unQuantity (_M `mod'` turn)
+        e = unQuantity (eccentricity o)
+        initialGuess = wrappedM
+        -- TODO: use 'converge' here when ad-4.3.2 is released, this passes the tests for now, but is slower than it needs to be
+        _E = [u|rad|] . last . take 20 $ findZero (\_E -> auto wrappedM - (_E - auto e * sin _E)) initialGuess
+
+-- | Calculate the mean anomaly, M, of an elliptic orbit when at eccentric anomaly E
+--
+-- 'meanAnomalyAtEccentricAnomaly' returns Nothing if given a parabolic or hyperbolic orbit.
+meanAnomalyAtEccentricAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (Angle a)
+meanAnomalyAtEccentricAnomaly o _E = case classify o of
+                                       Elliptic -> Just _M
+                                       _ -> Nothing
+  where e = eccentricity o
+        untypedE = convert _E
+        _M = convert (untypedE -: e *: sin untypedE)
+
