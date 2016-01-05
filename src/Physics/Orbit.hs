@@ -31,6 +31,8 @@ module Physics.Orbit
   , semiLatusRectum
   , hyperbolicApproachAngle
   , hyperbolicDepartureAngle
+    -- ** Conversions
+  , meanAnomalyAtTime
 
     -- * Unit synonyms
   , Time
@@ -289,3 +291,12 @@ hyperbolicDepartureAngle o =
 -- and -π when given a parabolic orbit.
 hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
+
+-- | Calculate the <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>,
+-- 'M', at the given time since periapse, t. T may be negative, indicating that
+-- the orbiting body has yet to reach periapse.
+--
+-- The sign of the mean anomaly at time t is the same as the sign of t.
+meanAnomalyAtTime :: (Floating a, Ord a) => Orbit a -> Time a -> Angle a
+meanAnomalyAtTime o t = t *: n
+  where n = meanMotion o
