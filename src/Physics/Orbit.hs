@@ -264,8 +264,9 @@ period o =
     p = turn /: n
 
 -- | Calculate the angle at which a body leaves the system when on an escape
--- trajectory. This is the limit of the true anomaly as time tends towards
--- infinity. The departure angle is in the closed range (π/2..π).
+-- trajectory relative to the argument of periapsis. This is the limit of the
+-- true anomaly as time tends towards infinity minus the argument of periapsis.
+-- The departure angle is in the closed range (π/2..π).
 --
 -- This is the negation of the approach angle.
 --
@@ -282,8 +283,9 @@ hyperbolicDepartureAngle o =
     _ -> Nothing
 
 -- | Calculate the angle at which a body leaves the system when on a hyperbolic
--- trajectory. This is the limit of the true anomaly as time tends towards
--- -infinity. The approach angle is in the closed range (-π..π/2).
+-- trajectory relative to the argument of periapsis. This is the limit of the
+-- true anomaly as time tends towards -infinity minus the argument of
+-- periapsis. The approach angle is in the closed range (-π..π/2).
 --
 -- This is the negation of the departure angle.
 --
