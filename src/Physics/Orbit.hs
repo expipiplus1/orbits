@@ -335,7 +335,18 @@ eccentricAnomalyAtMeanAnomaly o _M = case classify o of
                                        _ -> Nothing
   where wrappedM = unQuantity (_M `mod'` turn)
         e = unQuantity (eccentricity o)
-        initialGuess = wrappedM
+        -- Use a better initial guess, calculated using floats
+        -- http://alpheratz.net/dynamics/twobody/KeplerIterations_summary.pdf
+        _MFloat = realToFrac wrappedM :: Float
+        sinM = sin _MFloat
+        cosM = cos _MFloat
+        eFloat = realToFrac e :: Float
+        initialGuessFloat :: Float
+        initialGuessFloat = _MFloat +
+                            eFloat * sinM +
+                            eFloat * eFloat * sinM * cosM +
+                            0.5 * eFloat * eFloat * eFloat * sinM * (3 * cosM * cosM - 1)
+        initialGuess = realToFrac initialGuessFloat
         -- TODO: use 'converge' here when ad-4.3.2 is released, this passes the tests for now, but is slower than it needs to be
         _E = [u|rad|] . last . take 20 $ findZero (\_E -> auto wrappedM - (_E - auto e * sin _E)) initialGuess
 
