@@ -358,6 +358,17 @@ meanAnomalyAtTime :: (Floating a, Ord a) => Orbit a -> Time a -> Angle a
 meanAnomalyAtTime o t = t *: n
   where n = meanMotion o
 
+-- | Calculate the mean anomaly, M, of an elliptic orbit when at eccentric anomaly E
+--
+-- 'meanAnomalyAtEccentricAnomaly' returns Nothing if given a parabolic or hyperbolic orbit.
+meanAnomalyAtEccentricAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (Angle a)
+meanAnomalyAtEccentricAnomaly o _E = case classify o of
+                                       Elliptic -> Just _M
+                                       _ -> Nothing
+  where e = eccentricity o
+        untypedE = convert _E
+        _M = convert (untypedE -: e *: sin untypedE)
+
 -- | Calculate the eccentric anomaly, E, of an elliptic orbit at time t.
 --
 -- 'eccentricAnomalyAtTime' returns Nothing when given a parabolic or
@@ -418,14 +429,4 @@ eccentricAnomalyAtMeanAnomalyFloat o _M = case classify o of
              findZero (\_E -> auto wrappedM - (_E - auto e * sin _E))
                       initialGuess
 
--- | Calculate the mean anomaly, M, of an elliptic orbit when at eccentric anomaly E
---
--- 'meanAnomalyAtEccentricAnomaly' returns Nothing if given a parabolic or hyperbolic orbit.
-meanAnomalyAtEccentricAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (Angle a)
-meanAnomalyAtEccentricAnomaly o _E = case classify o of
-                                       Elliptic -> Just _M
-                                       _ -> Nothing
-  where e = eccentricity o
-        untypedE = convert _E
-        _M = convert (untypedE -: e *: sin untypedE)
 
