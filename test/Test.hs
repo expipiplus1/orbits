@@ -161,11 +161,18 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
                         ]
 
 test_meanAnomalyAtTime :: [TestTree]
-test_meanAnomalyAtTime = [ testProperty "meanAnomaly signum"
-                             (\o t -> signum' (meanAnomalyAtTime (o::Orbit Double) t) === signum' t)
-                         , testProperty "meanAnomaly at t = 0"
-                             (\o -> meanAnomalyAtTime (o::Orbit Double) [u|0s|] === [u|0rad|])
-                         ]
+test_meanAnomalyAtTime =
+  [ testProperty "meanAnomaly signum"
+      (\o t -> signum' (meanAnomalyAtTime (o::Orbit Double) t) === signum' t)
+  , testProperty "meanAnomaly at t = 0"
+      (\o -> meanAnomalyAtTime (o::Orbit Double) [u|0s|] === [u|0rad|])
+  , testProperty "meanAnomaly at t = p"
+      (\(EllipticOrbit o) -> meanAnomalyAtTime (o::Orbit Exact) (fromJust (period o)) ===
+            [u|rad|] (2 * pi))
+  , testProperty "meanAnomaly at t = -p"
+      (\(EllipticOrbit o) -> meanAnomalyAtTime (o::Orbit Exact) (negate' (fromJust (period o))) ===
+             [u|rad|] (-2 * pi))
+  ]
 
 test_eccentricAnomalyAtTime :: [TestTree]
 test_eccentricAnomalyAtTime = [ testProperty "eccentric anomaly range"
@@ -181,12 +188,17 @@ test_eccentricAnomalyAtMeanAnomaly = [ testProperty "eccentric anomaly range"
                                           in _E >=! [u|0rad|] .&&. _E <=! turn)
                                      ]
 
-test_meanEccentricInverse :: [TestTree]
-test_meanEccentricInverse = [ testProperty "mean eccentric inverse"
-                                (\(EllipticOrbit o) ->
-                                  inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
-                                          (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
-                            ]
+test_conversionInverses :: [TestTree]
+test_conversionInverses =
+  [ testProperty "mean time inverse"
+      (\o -> inverse (meanAnomalyAtTime (o :: Orbit Exact))
+                     (timeAtMeanAnomaly o))
+
+  , testProperty "mean eccentric inverse"
+      (\(EllipticOrbit o) ->
+        inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
+                (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
+  ]
 
 main :: IO ()
 main = $(defaultMainGenerator)

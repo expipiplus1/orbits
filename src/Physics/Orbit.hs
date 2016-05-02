@@ -32,6 +32,8 @@ module Physics.Orbit
   , hyperbolicApproachAngle
   , hyperbolicDepartureAngle
     -- ** Conversions
+  , timeAtMeanAnomaly
+  , timeAtEccentricAnomaly
   , meanAnomalyAtTime
   , meanAnomalyAtEccentricAnomaly
   , eccentricAnomalyAtTime
@@ -325,6 +327,25 @@ hyperbolicDepartureAngle o =
 -- and -π when given a parabolic orbit.
 hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
+
+-- | Calculate the time since periapse, t, when the body has the given
+-- <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>, M. M may be
+-- negative, indicating that the orbiting body has yet to reach periapse.
+--
+-- The sign of the time at mean anomaly M is the same as the sign of M.
+--
+-- The returned time is unbounded.
+timeAtMeanAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Time a
+timeAtMeanAnomaly o _M = _M /: n
+  where n = meanMotion o
+
+-- | Calculate the time since periapse, t, of an elliptic orbit when at
+-- eccentric anomaly E.
+--
+-- 'timeAtEccentricAnomaly' returns Nothing if given a parabolic or hyperbolic
+-- orbit.
+timeAtEccentricAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (Time a)
+timeAtEccentricAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtEccentricAnomaly o
 
 -- | Calculate the <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>,
 -- M, at the given time since periapse, t. T may be negative, indicating that
