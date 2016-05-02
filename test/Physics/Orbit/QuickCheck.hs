@@ -8,6 +8,7 @@ module Physics.Orbit.QuickCheck
   , EllipticOrbit(..)
   , ParabolicOrbit(..)
   , HyperbolicOrbit(..)
+  , unitOrbit
   ) where
 
 import Data.UnitsOfMeasure (u, Quantity)
@@ -122,3 +123,15 @@ shrinkPrimaryGravitationalParameter :: (Num a, Eq a) => Quantity a [u|m^3 s^-2|]
 shrinkPrimaryGravitationalParameter μ | μ == [u|1 m^3 s^-2|] = []
                                       | otherwise = [[u|1 m^3 s^-2|]]
 
+
+--------------------------------------------------------------------------------
+-- Extras
+--------------------------------------------------------------------------------
+
+unitOrbit :: Num a => Orbit a
+unitOrbit = Orbit{ eccentricity = 0
+                 , periapsis    = [u|1m|]
+                 , inclinationSpecifier = NonInclined
+                 , periapsisSpecifier = Circular
+                 , primaryGravitationalParameter = [u|1m^3s^-2|]
+                 }
