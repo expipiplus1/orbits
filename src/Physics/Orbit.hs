@@ -348,7 +348,7 @@ timeAtEccentricAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (Ti
 timeAtEccentricAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtEccentricAnomaly o
 
 -- | Calculate the <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>,
--- M, at the given time since periapse, t. T may be negative, indicating that
+-- M, at the given time since periapse, t. t may be negative, indicating that
 -- the orbiting body has yet to reach periapse.
 --
 -- The sign of the mean anomaly at time t is the same as the sign of t.
