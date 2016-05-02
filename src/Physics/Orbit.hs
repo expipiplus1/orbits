@@ -36,6 +36,7 @@ module Physics.Orbit
   , meanAnomalyAtEccentricAnomaly
   , eccentricAnomalyAtTime
   , eccentricAnomalyAtMeanAnomaly
+  , eccentricAnomalyAtMeanAnomalyFloat
 
     -- * Unit synonyms
   , Time
@@ -48,11 +49,14 @@ module Physics.Orbit
   , Velocity
   ) where
 
+import Data.CReal.Converge(Converge, convergeErr)
 import Data.UnitsOfMeasure.Extra
+import Data.UnitsOfMeasure.Internal(Quantity(..))
 import Data.UnitsOfMeasure.Defs ()
 import Data.UnitsOfMeasure.Show ()
-import Numeric.AD (auto)
-import Numeric.AD.Halley (findZero)
+import Numeric.AD (auto, Scalar, Mode)
+import Numeric.AD.Halley (findZero, findZeroNoEq)
+import Numeric.AD.Internal.Identity(Id(..))
 import Linear.V3 (V3)
 import Physics.Radian (turn)
 
@@ -170,6 +174,29 @@ data Classification = -- | 0 <= e < 1
                       -- | e > 1
                     | Hyperbolic
   deriving (Show, Read, Eq)
+
+unsafeMapUnit :: (a -> b) -> Quantity a u -> Quantity b u
+unsafeMapUnit f (MkQuantity x) = MkQuantity (f x)
+
+unsafeMapOrbit :: (a -> b) -> Orbit a -> Orbit b
+unsafeMapOrbit f (Orbit e q i p μ) = Orbit (unsafeMapUnit f e)
+                                           (unsafeMapUnit f q)
+                                           (unsafeMapInclinationSpecifier f i)
+                                           (unsafeMapPeriapsisSpecifier f p)
+                                           (unsafeMapUnit f μ)
+
+unsafeMapInclinationSpecifier :: (a -> b)
+                              -> InclinationSpecifier a -> InclinationSpecifier b
+unsafeMapInclinationSpecifier f s = case s of
+  Inclined _Ω i -> Inclined (unsafeMapUnit f _Ω) (unsafeMapUnit f i)
+  NonInclined   -> NonInclined
+
+unsafeMapPeriapsisSpecifier :: (a -> b)
+                            -> PeriapsisSpecifier a -> PeriapsisSpecifier b
+unsafeMapPeriapsisSpecifier f p = case p of
+  Circular    -> Circular
+  Eccentric a -> Eccentric (unsafeMapUnit f a)
+
 
 --------------------------------------------------------------------------------
 -- Functions
@@ -316,7 +343,8 @@ meanAnomalyAtTime o t = t *: n
 -- hyperbolic orbit.
 --
 -- The returned eccentric anomaly is in the range [0..2π]
-eccentricAnomalyAtTime :: (Floating a, Real a) => Orbit a -> Time a -> Maybe (Angle a)
+eccentricAnomalyAtTime :: (Converge [a], Floating a, Real a)
+                       => Orbit a -> Time a -> Maybe (Angle a)
 eccentricAnomalyAtTime o t = case classify o of
                                Elliptic -> eccentricAnomalyAtMeanAnomaly o . meanAnomalyAtTime o $ t
                                _ -> Nothing
@@ -329,26 +357,45 @@ eccentricAnomalyAtTime o t = case classify o of
 --
 -- 'eccentricAnomalyAtMeanAnomaly' returns Nothing when given a parabolic or
 -- hyperbolic orbit.
-eccentricAnomalyAtMeanAnomaly :: (Floating a, Real a) => Orbit a -> Angle a -> Maybe (Angle a)
+eccentricAnomalyAtMeanAnomaly :: forall a. (Converge [a], Floating a, Real a)
+                              => Orbit a -> Angle a -> Maybe (Angle a)
 eccentricAnomalyAtMeanAnomaly o _M = case classify o of
-                                       Elliptic -> Just _E
+                                       Elliptic -> _E
                                        _ -> Nothing
   where wrappedM = unQuantity (_M `mod'` turn)
         e = unQuantity (eccentricity o)
-        -- Use a better initial guess, calculated using floats
+        _MFloat = [u|rad|] . realToFrac $ wrappedM
+        oFloat = unsafeMapOrbit realToFrac o
+        initialGuessFloat :: Angle Float
+        Just initialGuessFloat = eccentricAnomalyAtMeanAnomalyFloat oFloat _MFloat
+        initialGuess = realToFrac . unQuantity $ initialGuessFloat
+        err :: (Mode b, Floating b, Scalar b ~ a) => b -> b
+        err _E = auto wrappedM - (_E - auto e * sin _E)
+        _E = fmap [u|rad|] . convergeErr (runId . abs . err .  Id) $
+             findZeroNoEq err initialGuess
+
+-- | 'eccentricAnomalyAtMeanAnomaly' specialized to 'Float'.
+--
+-- This function is used to calculate the initial guess for
+-- 'eccentricAnomalyAtMeanAnomaly'.
+eccentricAnomalyAtMeanAnomalyFloat :: Orbit Float -> Angle Float -> Maybe (Angle Float)
+eccentricAnomalyAtMeanAnomalyFloat o _M = case classify o of
+                                            Elliptic -> Just _E
+                                            _ -> Nothing
+  where wrappedM = unQuantity (_M `mod'` turn)
+        e = unQuantity (eccentricity o)
+        sinM = sin wrappedM
+        cosM = cos wrappedM
+        -- Use a better initial guess
         -- http://alpheratz.net/dynamics/twobody/KeplerIterations_summary.pdf
-        _MFloat = realToFrac wrappedM :: Float
-        sinM = sin _MFloat
-        cosM = cos _MFloat
-        eFloat = realToFrac e :: Float
-        initialGuessFloat :: Float
-        initialGuessFloat = _MFloat +
-                            eFloat * sinM +
-                            eFloat * eFloat * sinM * cosM +
-                            0.5 * eFloat * eFloat * eFloat * sinM * (3 * cosM * cosM - 1)
-        initialGuess = realToFrac initialGuessFloat
-        -- TODO: use 'converge' here when ad-4.3.2 is released, this passes the tests for now, but is slower than it needs to be
-        _E = [u|rad|] . last . take 20 $ findZero (\_E -> auto wrappedM - (_E - auto e * sin _E)) initialGuess
+        initialGuess = wrappedM +
+                       e * sinM +
+                       e * e * sinM * cosM +
+                       0.5 * e * e * e * sinM * (3 * cosM * cosM - 1)
+        _E :: Angle Float
+        _E = [u|rad|] . last . take 5 $
+             findZero (\_E -> auto wrappedM - (_E - auto e * sin _E))
+                      initialGuess
 
 -- | Calculate the mean anomaly, M, of an elliptic orbit when at eccentric anomaly E
 --
