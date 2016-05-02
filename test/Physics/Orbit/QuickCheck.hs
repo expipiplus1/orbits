@@ -1,5 +1,5 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -11,11 +11,16 @@ module Physics.Orbit.QuickCheck
   , unitOrbit
   ) where
 
-import Data.UnitsOfMeasure (u, Quantity)
-import Data.UnitsOfMeasure.QuickCheck (PositiveQuantity(..))
-import Physics.Orbit (Orbit(..), InclinationSpecifier(..), PeriapsisSpecifier(..), Unitless, Distance)
-import System.Random (Random)
-import Test.QuickCheck (Arbitrary(..), oneof, choose, suchThat)
+import           Data.UnitsOfMeasure            (Quantity, u)
+import           Data.UnitsOfMeasure.QuickCheck (PositiveQuantity (..))
+import           Physics.Orbit                  (Distance,
+                                                 InclinationSpecifier (..),
+                                                 Orbit (..),
+                                                 PeriapsisSpecifier (..),
+                                                 Unitless)
+import           System.Random                  (Random)
+import           Test.QuickCheck                (Arbitrary (..), choose, oneof,
+                                                 suchThat)
 
 newtype CircularOrbit a = CircularOrbit {getCircularOrbit :: Orbit a}
   deriving(Show, Eq)

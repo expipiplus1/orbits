@@ -1,12 +1,12 @@
 -- Extensions for uom-plugin
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
 
@@ -68,18 +68,18 @@ module Physics.Orbit
   , Converge
   ) where
 
-import Data.CReal.Converge(Converge, convergeErr)
-import Data.UnitsOfMeasure.Extra
-import Data.UnitsOfMeasure.Internal(Quantity(..))
-import Data.UnitsOfMeasure.Defs ()
-import Data.UnitsOfMeasure.Show ()
-import Numeric.AD (auto, Scalar, Mode)
-import Numeric.AD.Halley (findZero, findZeroNoEq)
-import Numeric.AD.Internal.Identity(Id(..))
-import Linear.V3 (V3)
-import Physics.Radian (halfTurn, turn)
-import Control.Monad ((<=<))
-import Data.Bifunctor (bimap, second)
+import           Control.Monad                ((<=<))
+import           Data.Bifunctor               (bimap, second)
+import           Data.CReal.Converge          (Converge, convergeErr)
+import           Data.UnitsOfMeasure.Defs     ()
+import           Data.UnitsOfMeasure.Extra
+import           Data.UnitsOfMeasure.Internal (Quantity (..))
+import           Data.UnitsOfMeasure.Show     ()
+import           Linear.V3                    (V3)
+import           Numeric.AD                   (Mode, Scalar, auto)
+import           Numeric.AD.Halley            (findZero, findZeroNoEq)
+import           Numeric.AD.Internal.Identity (Id (..))
+import           Physics.Radian               (halfTurn, turn)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -117,24 +117,24 @@ data Orbit a = Orbit { -- | The orbit's eccentricity, e.
                        --
                        -- An eccentricity greater than 1 describes a hyperbolic
                        -- orbit.
-                       eccentricity :: !(Unitless a)
+                       eccentricity                  :: !(Unitless a)
                        -- | The orbit's periapsis, q.
                        --
                        -- 'periapsis' must be positive.
                        --
                        -- The periapsis is the distance between the bodies at
                        -- their closest approach.
-                     , periapsis :: !(Distance a)
+                     , periapsis                     :: !(Distance a)
                        -- | The 'inclinationSpecifier' describes the angle
                        -- between the obtital plane and the reference plane.
-                     , inclinationSpecifier :: !(InclinationSpecifier a)
+                     , inclinationSpecifier          :: !(InclinationSpecifier a)
                        -- | 'periapsisSpecifier' is 'Circular' iff
                        -- 'eccentricity' is 0
                        --
                        -- The periapsis specifier describes any rotation of
                        -- the orbit relative to the reference direction in the
                        -- orbital plane.
-                     , periapsisSpecifier :: !(PeriapsisSpecifier a)
+                     , periapsisSpecifier            :: !(PeriapsisSpecifier a)
                        -- | The gravitational parameter of the system's
                        -- primary, μ.
                        --
@@ -163,7 +163,7 @@ data InclinationSpecifier a = -- | The orbit does not lie exactly in the
                                          --
                                          -- The angle between the reference
                                          -- plane and the orbital plane
-                                       , inclination :: !(Angle a)
+                                       , inclination              :: !(Angle a)
                                        }
                               -- | The orbit lies in the reference plane
                             | NonInclined

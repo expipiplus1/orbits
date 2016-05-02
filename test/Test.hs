@@ -1,30 +1,30 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE TemplateHaskell            #-}
 {-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
 
 module Main
   ( main
   ) where
 
-import Data.Coerce (coerce)
-import Data.CReal (CReal)
-import Data.CReal.QuickCheck ()
-import Data.Maybe (fromJust)
-import Data.UnitsOfMeasure.Extra (u, (*:), (/:), negate', square, cube, signum', div', unQuantity)
-import Physics.Orbit
-import Physics.Orbit.QuickCheck
-import Physics.Radian (halfTurn, turn)
-import Test.Tasty (testGroup, TestTree)
-import Test.Tasty.QuickCheck (testProperty, (===), (==>), (.&&.))
-import Test.QuickCheck.Extra ((<=!), (>=!))
-import Test.QuickCheck.Arbitrary(Arbitrary)
-import Test.Tasty.TH (defaultMainGenerator)
-import Test.QuickCheck.Checkers (inverse)
-import WrappedAngle (WrappedAngle(..))
+import           Data.Coerce               (coerce)
+import           Data.CReal                (CReal)
+import           Data.CReal.QuickCheck     ()
+import           Data.Maybe                (fromJust)
+import           Data.UnitsOfMeasure.Extra (cube, div', negate', square, u,
+                                            unQuantity, (*:), (/:))
+import           Physics.Orbit
+import           Physics.Orbit.QuickCheck
+import           Physics.Radian            (halfTurn, turn)
+import           Test.QuickCheck.Arbitrary (Arbitrary)
+import           Test.QuickCheck.Checkers  (inverse)
+import           Test.Tasty                (TestTree, testGroup)
+import           Test.Tasty.QuickCheck     (testProperty, (===), (==>))
+import           Test.Tasty.TH             (defaultMainGenerator)
+import           WrappedAngle              (WrappedAngle (..))
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
 
