@@ -6,7 +6,8 @@ module Data.CReal.QuickCheck
 
 import Data.CReal
 import GHC.TypeLits
-import Test.QuickCheck.Arbitrary (Arbitrary(..), arbitrarySizedFractional, shrinkRealFracToInteger)
+import Test.QuickCheck.Arbitrary
+  (Arbitrary (..), arbitrarySizedFractional, shrinkRealFracToInteger)
 
 instance KnownNat n => Arbitrary (CReal n) where
   arbitrary = arbitrarySizedFractional

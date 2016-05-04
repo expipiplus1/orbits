@@ -68,18 +68,18 @@ module Physics.Orbit
   , Converge
   ) where
 
-import           Control.Monad                ((<=<))
-import           Data.Bifunctor               (bimap, second)
-import           Data.CReal.Converge          (Converge, convergeErr)
-import           Data.UnitsOfMeasure.Defs     ()
-import           Data.UnitsOfMeasure.Extra
-import           Data.UnitsOfMeasure.Internal (Quantity (..))
-import           Data.UnitsOfMeasure.Show     ()
-import           Linear.V3                    (V3)
-import           Numeric.AD                   (Mode, Scalar, auto)
-import           Numeric.AD.Halley            (findZero, findZeroNoEq)
-import           Numeric.AD.Internal.Identity (Id (..))
-import           Physics.Radian               (halfTurn, turn)
+import Control.Monad                ((<=<))
+import Data.Bifunctor               (bimap, second)
+import Data.CReal.Converge          (Converge, convergeErr)
+import Data.UnitsOfMeasure.Defs     ()
+import Data.UnitsOfMeasure.Extra
+import Data.UnitsOfMeasure.Internal (Quantity (..))
+import Data.UnitsOfMeasure.Show     ()
+import Linear.V3                    (V3)
+import Numeric.AD                   (Mode, Scalar, auto)
+import Numeric.AD.Halley            (findZero, findZeroNoEq)
+import Numeric.AD.Internal.Identity (Id (..))
+import Physics.Radian               (halfTurn, turn)
 
 --------------------------------------------------------------------------------
 -- Types

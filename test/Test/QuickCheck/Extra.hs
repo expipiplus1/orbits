@@ -1,9 +1,9 @@
-module Test.QuickCheck.Extra 
+module Test.QuickCheck.Extra
   ( (<=!)
   , (>=!)
   ) where
 
-import Test.QuickCheck (counterexample, Property)
+import Test.QuickCheck (Property, counterexample)
 
 infix 4 <=!
 (<=!) :: (Ord a, Show a) => a -> a -> Property
