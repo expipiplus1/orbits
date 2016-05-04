@@ -19,6 +19,8 @@ import Physics.Orbit
 import System.Random                  (Random)
 import Test.QuickCheck                (Arbitrary (..), choose, oneof, suchThat)
 
+{-# ANN module "HLint: ignore Reduce duplication" #-}
+
 newtype CircularOrbit a = CircularOrbit {getCircularOrbit :: Orbit a}
   deriving(Show, Eq)
 

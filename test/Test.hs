@@ -262,7 +262,7 @@ anomalyTimeConversionTests anomalyToTime fromName =
   ]
 
 (.:) :: (a -> b) -> (c -> d -> a) -> c -> d -> b
-f .: g = (\x y -> f (g x y))
+f .: g = \x y -> f (g x y)
 
 test_conversionToTime :: [TestTree]
 test_conversionToTime =
@@ -346,8 +346,8 @@ test_conversionInverses =
 
   , testProperty "eccentric true inverse"
       (\(EllipticOrbit o) ->
-        inverse (coerce (fromJust . (eccentricAnomalyAtTrueAnomaly (o:: Orbit Exact))) :: WrappedAngle Exact -> WrappedAngle Exact)
-                (fromJust . (coerce (trueAnomalyAtEccentricAnomaly o))))
+        inverse (coerce (fromJust . eccentricAnomalyAtTrueAnomaly (o:: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
+                (fromJust . coerce (trueAnomalyAtEccentricAnomaly o)))
   ]
 
 main :: IO ()
