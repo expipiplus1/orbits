@@ -99,7 +99,7 @@ script:
       cabal configure --enable-tests --enable-benchmarks --enable-coverage -v2 --ghc-options="-O2 -Werror"
       cabal build
       cabal check || [ "$CABALVER" == "1.16" ]
-      cabal test
+      cabal test --show-details=streaming
       cabal sdist
       cabal copy
       SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && \
@@ -115,7 +115,7 @@ after_script:
       ./shc exact-real test doctest
       ;;
     cabal)
-      echo "COVERALLS"
+      $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test test doctest
       ;;
   esac
 
