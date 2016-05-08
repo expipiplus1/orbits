@@ -1,0 +1,33 @@
+stages:
+  - build
+
+.cabal_build: &cabal_script
+  script:
+    - cabal sandbox init
+    - cabal configure --enable-tests --enable-benchmarks --enable-coverage -v2 --ghc-options="-Werror"
+    - cabal build
+    - cabal test --show-details=streaming
+    - cabal sdist
+    - cabal copy
+    - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+
+ghc7103_cabal:
+  <<: *cabal_script
+  image: haskell:7.10.3
+  stage: build
+  before_script:
+    - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+    - if [ -f configure.ac ]; then autoreconf -i; fi
+    - cabal --version
+    - cabal update
+    - cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O1 --reorder-goals --max-backjumps=-1
+    - echo "Installed dependencies"
+  after_script:
+    - apt-get install libcurl1
+    - cabal install hpc-coveralls
+    - $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test test doctest
+  cache:
+    paths:
+      - .cabal-sandbox/
+      - cabal.sandbox.config
+
