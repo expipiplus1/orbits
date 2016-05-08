@@ -31,3 +31,12 @@ ghc7103_cabal:
       - .cabal-sandbox/
       - cabal.sandbox.config
 
+nix_unstable_7103:
+  image: nixos/nix
+  stage: build
+  before_script:
+    - nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
+    - nix-channel --update
+    - export NIX_PATH=nixpkgs=$HOME/.nix-defexpr/channels/nixpkgs
+  script:
+    - nix-build -E 'with (import <nixpkgs> {}); (haskell.packages.ghc7103.callPackage ./. {})'
