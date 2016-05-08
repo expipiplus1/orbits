@@ -316,91 +316,94 @@ anomalyTimeConversionTests anomalyToTime fromName =
 (.:) :: (a -> b) -> (c -> d -> a) -> c -> d -> b
 f .: g = \x y -> f (g x y)
 
-test_conversionToTime :: [TestTree]
-test_conversionToTime =
-  [ testGroup "from mean anomaly"
-              (anomalyTimeConversionTests timeAtMeanAnomaly "mean anomaly")
-  , testGroup "from eccentric anomaly"
-              (anomalyTimeConversionTests (fromJust .: timeAtEccentricAnomaly)
-                                          "eccentric anomaly")
-  , testGroup "from true anomaly"
-              (anomalyTimeConversionTests (fromJust .: timeAtTrueAnomaly)
-                                          "true anomaly")
-  ]
+test_conversions :: [TestTree]
+test_conversions = [ conversionToTime
+                   , conversionToMeanAnomaly
+                   , conversionToEccentricAnomaly
+                   , conversionToTrueAnomaly
+                   , conversionInverses
+                   ]
+  where
+    conversionToTime = testGroup "conversion to time"
+      [ testGroup "from mean anomaly"
+                  (anomalyTimeConversionTests timeAtMeanAnomaly "mean anomaly")
+      , testGroup "from eccentric anomaly"
+                  (anomalyTimeConversionTests (fromJust .: timeAtEccentricAnomaly)
+                                              "eccentric anomaly")
+      , testGroup "from true anomaly"
+                  (anomalyTimeConversionTests (fromJust .: timeAtTrueAnomaly)
+                                              "true anomaly")
+      ]
 
-test_conversionToMeanAnomaly :: [TestTree]
-test_conversionToMeanAnomaly = let s = "mean anomaly" in
-  [ testGroup "from time"
-              (timeAnomalyConversionTests meanAnomalyAtTime s)
-  , testGroup "from eccentric anomaly"
-              (anomalyConversionTests (fromJust .: meanAnomalyAtEccentricAnomaly)
-                                      "eccentric anomaly"
-                                      s)
-  , testGroup "from true anomaly"
-              (anomalyConversionTests (fromJust .: meanAnomalyAtTrueAnomaly)
-                                      "true anomaly"
-                                      s)
-  ]
+    conversionToMeanAnomaly = let s = "mean anomaly" in testGroup ("conversion to " ++ s)
+      [ testGroup "from time"
+                  (timeAnomalyConversionTests meanAnomalyAtTime s)
+      , testGroup "from eccentric anomaly"
+                  (anomalyConversionTests (fromJust .: meanAnomalyAtEccentricAnomaly)
+                                          "eccentric anomaly"
+                                          s)
+      , testGroup "from true anomaly"
+                  (anomalyConversionTests (fromJust .: meanAnomalyAtTrueAnomaly)
+                                          "true anomaly"
+                                          s)
+      ]
 
-test_conversionToEccentricAnomaly :: [TestTree]
-test_conversionToEccentricAnomaly = let s = "eccentric anomaly" in
-  [ testGroup "from time"
-              (timeAnomalyConversionTests (fromJust .: eccentricAnomalyAtTime) s)
-  , testGroup "from mean anomaly"
-              (anomalyConversionTests (fromJust .: eccentricAnomalyAtMeanAnomaly)
-                                      "mean anomaly"
-                                      s)
-  , testGroup "from true anomaly"
-              (anomalyConversionTests (fromJust .: eccentricAnomalyAtTrueAnomaly)
-                                      "true anomaly"
-                                      s)
-  ]
+    conversionToEccentricAnomaly = let s = "eccentric anomaly" in testGroup ("conversion to " ++ s)
+      [ testGroup "from time"
+                  (timeAnomalyConversionTests (fromJust .: eccentricAnomalyAtTime) s)
+      , testGroup "from mean anomaly"
+                  (anomalyConversionTests (fromJust .: eccentricAnomalyAtMeanAnomaly)
+                                          "mean anomaly"
+                                          s)
+      , testGroup "from true anomaly"
+                  (anomalyConversionTests (fromJust .: eccentricAnomalyAtTrueAnomaly)
+                                          "true anomaly"
+                                          s)
+      ]
 
-test_conversionToTrueAnomaly :: [TestTree]
-test_conversionToTrueAnomaly = let s = "true anomaly" in
-  [ testGroup "from time"
-              (timeAnomalyConversionTests (fromJust .: trueAnomalyAtTime) s)
-  , testGroup "from mean anomaly"
-              (anomalyConversionTests (fromJust .: trueAnomalyAtMeanAnomaly)
-                                      "mean anomaly"
-                                      s)
-  , testGroup "from eccentric anomaly"
-              (anomalyConversionTests (fromJust .: trueAnomalyAtEccentricAnomaly)
-                                      "eccentric anomaly"
-                                      s)
-  ]
+    conversionToTrueAnomaly = let s = "true anomaly" in testGroup ("conversion to " ++ s)
+      [ testGroup "from time"
+                  (timeAnomalyConversionTests (fromJust .: trueAnomalyAtTime) s)
+      , testGroup "from mean anomaly"
+                  (anomalyConversionTests (fromJust .: trueAnomalyAtMeanAnomaly)
+                                          "mean anomaly"
+                                          s)
+      , testGroup "from eccentric anomaly"
+                  (anomalyConversionTests (fromJust .: trueAnomalyAtEccentricAnomaly)
+                                          "eccentric anomaly"
+                                          s)
+      ]
 
-test_conversionInverses :: [TestTree]
-test_conversionInverses =
-  [ testProperty "mean time inverse"
-      (\o -> inverse (meanAnomalyAtTime (o :: Orbit Exact))
-                     (timeAtMeanAnomaly o))
+    conversionInverses = testGroup "conversionInverses"
+      [ testProperty "mean time inverse"
+          (\o -> inverse (meanAnomalyAtTime (o :: Orbit Exact))
+                         (timeAtMeanAnomaly o))
 
-  , slowTest $ testProperty "mean eccentric inverse"
-      (\(EllipticOrbit o) ->
-        inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
-                (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
+      , slowTest $ testProperty "mean eccentric inverse"
+          (\(EllipticOrbit o) ->
+            inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
+                    (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
 
-  , slowTest $ testProperty "mean true inverse"
-      (\(EllipticOrbit o) ->
-        inverse (fromJust . meanAnomalyAtTrueAnomaly (o :: Orbit Exact))
-                (fromJust . trueAnomalyAtMeanAnomaly o))
+      , slowTest $ testProperty "mean true inverse"
+          (\(EllipticOrbit o) ->
+            inverse (fromJust . meanAnomalyAtTrueAnomaly (o :: Orbit Exact))
+                    (fromJust . trueAnomalyAtMeanAnomaly o))
 
-  , slowTest $ testProperty "time true inverse"
-      (\(EllipticOrbit o) ->
-        inverse (fromJust . timeAtTrueAnomaly (o :: Orbit Exact))
-                (fromJust . trueAnomalyAtTime o))
+      , slowTest $ testProperty "time true inverse"
+          (\(EllipticOrbit o) ->
+            inverse (fromJust . timeAtTrueAnomaly (o :: Orbit Exact))
+                    (fromJust . trueAnomalyAtTime o))
 
-  , testProperty "time eccentric inverse"
-      (\(EllipticOrbit o) ->
-        inverse (fromJust . timeAtEccentricAnomaly (o :: Orbit Exact))
-                (fromJust . eccentricAnomalyAtTime o))
+      , testProperty "time eccentric inverse"
+          (\(EllipticOrbit o) ->
+            inverse (fromJust . timeAtEccentricAnomaly (o :: Orbit Exact))
+                    (fromJust . eccentricAnomalyAtTime o))
 
-  , testProperty "eccentric true inverse"
-      (\(EllipticOrbit o) ->
-        inverse (coerce (fromJust . eccentricAnomalyAtTrueAnomaly (o:: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
-                (fromJust . coerce (trueAnomalyAtEccentricAnomaly o)))
-  ]
+      , testProperty "eccentric true inverse"
+          (\(EllipticOrbit o) ->
+            inverse (coerce (fromJust . eccentricAnomalyAtTrueAnomaly (o:: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
+                    (fromJust . coerce (trueAnomalyAtEccentricAnomaly o)))
+      ]
 
 main :: IO ()
 main = do
