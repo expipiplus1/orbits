@@ -112,7 +112,7 @@ after_script:
   case "$BUILD" in
     stack)
       travis_retry curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.3.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
-      ./shc exact-real test doctest
+      ./shc orbit test doctest
       ;;
     cabal)
       $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test test doctest
