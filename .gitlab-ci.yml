@@ -28,6 +28,22 @@ ghc7103_cabal:
       - .cabal-sandbox/
       - cabal.sandbox.config
 
+stack:
+  image: fpco/stack-build
+  stage: build
+  before_script:
+    - stack --no-terminal --install-ghc test --only-dependencies
+  script:
+    - stack --no-terminal $ARGS test --coverage --haddock --no-haddock-deps
+  after_script:
+    - curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.3.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
+    - ./shc orbit test doctest
+  cache:
+    paths:
+    - $HOME/.ghc/
+    - $HOME/.cabal/
+    - $HOME/.stack/
+
 nix_unstable_7103:
   image: nixos/nix
   stage: build
