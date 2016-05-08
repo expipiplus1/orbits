@@ -17,7 +17,6 @@ ghc7103_cabal:
   before_script:
     - cabal sandbox init
     - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
-    - if [ -f configure.ac ]; then autoreconf -i; fi
     - cabal --version
     - cabal update
     - cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O1 --reorder-goals --max-backjumps=-1
