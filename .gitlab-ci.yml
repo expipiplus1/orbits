@@ -25,7 +25,7 @@ ghc7103_cabal:
   after_script:
     - apt-get install libcurl1
     - cabal install hpc-coveralls
-    - $HOME/.cabal/bin/hpc-coveralls --exclude-dir=test test doctest
+    - cabal exec hpc-coveralls --exclude-dir=test test doctest
   cache:
     paths:
       - .cabal-sandbox/
