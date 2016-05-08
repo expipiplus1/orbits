@@ -38,4 +38,4 @@ nix_unstable_7103:
     - nix-channel --update
     - export NIX_PATH=nixpkgs=$HOME/.nix-defexpr/channels/nixpkgs
   script:
-    - nix-build -E 'with (import <nixpkgs> {}); (haskell.packages.ghc7103.callPackage ./. {}).overrideDerivation (oldAttrs: { checkPhase = "runHook preCheck; ./Setup test --show-details=streaming; runHook postCheck;";})'
+    - 'nix-build -E ''with (import <nixpkgs> {}); (haskell.packages.ghc7103.callPackage ./. {}).overrideDerivation (oldAttrs: { checkPhase = "runHook preCheck; ./Setup test --show-details=streaming; runHook postCheck;";})'''
