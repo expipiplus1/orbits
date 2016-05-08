@@ -20,7 +20,7 @@ ghc7103_cabal:
     - cabal sdist
     - cabal copy
     - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
-    - apt-get install libcurl1
+    - apt-get install libcurl3
     - cabal install hpc-coveralls
     - cabal exec hpc-coveralls --exclude-dir=test test doctest
   cache:
@@ -35,7 +35,6 @@ stack:
     - stack --no-terminal --install-ghc test --only-dependencies
   script:
     - stack --no-terminal $ARGS test --coverage --haddock --no-haddock-deps
-  after_script:
     - curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.3.0/shc-linux-x64-$GHCVER.tar.bz2 | tar -xj
     - ./shc orbit test doctest
   cache:
