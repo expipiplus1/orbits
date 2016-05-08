@@ -10,25 +10,77 @@ module Main
   ( main
   ) where
 
-import Data.Coerce               (coerce)
-import Data.CReal                (CReal)
-import Data.CReal.QuickCheck     ()
-import Data.Maybe                (fromJust)
+import Control.Applicative          ((<|>))
+import Data.Coerce                  (coerce)
+import Data.CReal                   (CReal)
+import Data.CReal.QuickCheck        ()
+import Data.Maybe                   (fromJust)
+import Data.Proxy                   (Proxy (..))
+import Data.Ratio                   ((%))
+import Data.Tagged                  (Tagged (..))
 import Data.UnitsOfMeasure.Extra
   (cube, div', negate', square, u, unQuantity, (*:), (/:))
+import Numeric                      (readFloat)
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
-import Physics.Radian            (halfTurn, turn)
-import Test.QuickCheck.Arbitrary (Arbitrary)
-import Test.QuickCheck.Checkers  (inverse)
-import Test.Tasty                (TestTree, testGroup)
-import Test.Tasty.QuickCheck     (testProperty, (===), (==>))
-import Test.Tasty.TH             (defaultMainGenerator)
-import WrappedAngle              (WrappedAngle (..))
+import Physics.Radian               (halfTurn, turn)
+import Test.QuickCheck.Arbitrary    (Arbitrary)
+import Test.QuickCheck.Checkers     (inverse)
+import Test.Tasty
+  (TestTree, adjustOption, askOption, defaultIngredients,
+  defaultMainWithIngredients, includingOptions, testGroup)
+import Test.Tasty.Options           (IsOption (..), OptionDescription (..))
+import Test.Tasty.QuickCheck
+  (QuickCheckTests (..), testProperty, (===), (==>))
+import Test.Tasty.TH                (testGroupGenerator)
+import Text.ParserCombinators.ReadP (char, eof, readP_to_S, readS_to_P)
+import WrappedAngle                 (WrappedAngle (..))
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
 
+-- | The type used for tests which require exact arithmetic. They are compared
+-- at a resolution of 2^32
 type Exact = CReal 32
+
+--------------------------------------------------------------------------------
+-- Disable some really slow tests by default
+--------------------------------------------------------------------------------
+
+newtype SlowTestQCRatio = SlowTestQCRatio Rational
+
+slowTestQCRatio :: OptionDescription
+slowTestQCRatio = Option (Proxy :: Proxy SlowTestQCRatio)
+
+readRational :: String -> Maybe Rational
+readRational s = case readP_to_S readRationalP s of
+                   [(r,"")] -> Just r
+                   _ -> Nothing
+  where readRationalP = readS_to_P readFloat <* eof
+                    <|> do n <- readS_to_P reads
+                           _ <- char '/'
+                           d <- readS_to_P reads
+                           eof
+                           pure (n%d)
+
+instance IsOption SlowTestQCRatio where
+  defaultValue = SlowTestQCRatio (1%10)
+  parseValue = fmap SlowTestQCRatio . readRational
+  optionName = Tagged "slow-test-ratio"
+  optionHelp = Tagged $
+    unwords [ "Some of the slow tests can take a long time to run; set this"
+            , "flag to change the number of slow test QuickCheck test cases as"
+            , "a proportion of the non-slow test number."
+            ]
+
+slowTest :: TestTree -> TestTree
+slowTest t = askOption (\(SlowTestQCRatio r) ->
+                          adjustOption (qcRatio r) t)
+  where qcRatio r (QuickCheckTests n) =
+          QuickCheckTests (floor (fromIntegral n * r))
+
+--------------------------------------------------------------------------------
+-- The tests
+--------------------------------------------------------------------------------
 
 test_sanity :: [TestTree]
 test_sanity = [ testProperty "circular isValid"
@@ -324,17 +376,17 @@ test_conversionInverses =
       (\o -> inverse (meanAnomalyAtTime (o :: Orbit Exact))
                      (timeAtMeanAnomaly o))
 
-  , testProperty "mean eccentric inverse"
+  , slowTest $ testProperty "mean eccentric inverse"
       (\(EllipticOrbit o) ->
         inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
                 (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
 
-  , testProperty "mean true inverse"
+  , slowTest $ testProperty "mean true inverse"
       (\(EllipticOrbit o) ->
         inverse (fromJust . meanAnomalyAtTrueAnomaly (o :: Orbit Exact))
                 (fromJust . trueAnomalyAtMeanAnomaly o))
 
-  , testProperty "time true inverse"
+  , slowTest $ testProperty "time true inverse"
       (\(EllipticOrbit o) ->
         inverse (fromJust . timeAtTrueAnomaly (o :: Orbit Exact))
                 (fromJust . trueAnomalyAtTime o))
@@ -351,5 +403,7 @@ test_conversionInverses =
   ]
 
 main :: IO ()
-main = $(defaultMainGenerator)
+main = do
+  let is = includingOptions [slowTestQCRatio] : defaultIngredients
+  defaultMainWithIngredients is $(testGroupGenerator)
 

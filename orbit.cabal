@@ -67,6 +67,7 @@ test-suite test
     linear           >= 1.18  && < 1.21,
     QuickCheck       >= 2.8   && < 2.9,
     random           >= 1.1   && < 1.2,
+    tagged           >= 0.8   && < 0.9,
     tasty            >= 0.10  && < 0.12,
     tasty-quickcheck >= 0.8.4 && < 0.9,
     tasty-th         >= 0.1   && < 0.2,
