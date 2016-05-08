@@ -3,7 +3,6 @@ stages:
 
 .cabal_build: &cabal_script
   script:
-    - cabal sandbox init
     - cabal configure --enable-tests --enable-benchmarks --enable-coverage -v2 --ghc-options="-Werror"
     - cabal build
     - cabal test --show-details=streaming
@@ -16,6 +15,7 @@ ghc7103_cabal:
   image: haskell:7.10.3
   stage: build
   before_script:
+    - cabal sandbox init
     - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
     - if [ -f configure.ac ]; then autoreconf -i; fi
     - cabal --version
