@@ -32,8 +32,6 @@ stack:
     - stack --no-terminal --install-ghc test --only-dependencies
   script:
     - stack --no-terminal $ARGS test --coverage --haddock --no-haddock-deps
-    - curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.3.0/shc-linux-x64-7.10.3.tar.bz2 | tar -xj
-    - ./shc orbit test doctest
   cache:
     paths:
     - $HOME/.ghc/
