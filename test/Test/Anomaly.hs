@@ -28,7 +28,7 @@ import Test.SlowTest
 import WrappedAngle  (WrappedAngle (..))
 
 anomalyConversionTests :: (forall a. (RealFloat a, Show a, Arbitrary a, Converge [a])
-                                  => Orbit a -> Angle a -> Angle a)
+                       => Orbit a -> Angle a -> Angle a)
                        -> String -> String -> [TestTree]
 anomalyConversionTests convertAnomaly fromName toName =
   [ testProperty (toName ++ " when " ++ fromName ++ " = 0")
