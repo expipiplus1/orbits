@@ -70,7 +70,6 @@ install:
 script:
 - cabal configure --enable-tests --enable-benchmarks --enable-coverage -v2 --ghc-options="-O2 -Werror"
 - cabal build
-- cabal check || [ "$CABALVER" == "1.16" ]
 - cabal test --show-details=streaming
 - cabal sdist
 - cabal copy
