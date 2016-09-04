@@ -264,9 +264,9 @@ apoapsis o =
 meanMotion :: (Floating a, Ord a) => Orbit a -> Quantity a [u|rad/s|]
 meanMotion o =
   case classify o of
-    Elliptic   -> convert $ sqrt' (μ /: cube a)
-    Hyperbolic -> convert $ sqrt' (μ /: negate' (cube a))
-    Parabolic  -> convert $ 2 *: sqrt' (μ /: cube l)
+    Elliptic   -> sqrt' (μ /: cube a)
+    Hyperbolic -> sqrt' (μ /: negate' (cube a))
+    Parabolic  -> 2 *: sqrt' (μ /: cube l)
   where
     Just a = semiMajorAxis o
     μ = primaryGravitationalParameter o

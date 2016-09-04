@@ -64,7 +64,7 @@ instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (EllipticOrbit a) wh
       pure . EllipticOrbit $ Orbit { .. }
   shrink (EllipticOrbit o) = EllipticOrbit <$> shrinkOrbit o
 
-instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (ParabolicOrbit a) where
+instance (Num a, Ord a, Arbitrary a) => Arbitrary (ParabolicOrbit a) where
   arbitrary =
     do
       let eccentricity = 1
@@ -75,7 +75,7 @@ instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (ParabolicOrbit a) w
       pure . ParabolicOrbit $ Orbit { .. }
   shrink (ParabolicOrbit o) = ParabolicOrbit <$> shrinkOrbit o
 
-instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (HyperbolicOrbit a) where
+instance (Num a, Ord a, Arbitrary a) => Arbitrary (HyperbolicOrbit a) where
   arbitrary =
     do
       eccentricity <- arbitrary `suchThat` (> 1)
