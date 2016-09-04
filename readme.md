@@ -10,6 +10,7 @@ Nomenclature
 
 | Symbol | Meaning                          | Notes                          |
 |--------|----------------------------------|--------------------------------|
+| o      | Orbit                            |                                |
 | a      | Semi-major axis                  | Negative for hyperbolic orbits |
 | b      | Semi-minor axis                  | Negative for hyperbolic orbits |
 | e      | Eccentricity                     |                                |
