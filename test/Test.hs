@@ -25,6 +25,7 @@ import Physics.Radian           (halfTurn)
 import qualified Test.Anomaly
 import           Test.Exact
 import           Test.SlowTest
+import qualified Test.State
 
 {-# ANN module "HLint: ignore Reduce duplication" #-}
 
@@ -167,6 +168,9 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
 
 test_conversions :: [TestTree]
 test_conversions = Test.Anomaly.test_conversions
+
+test_state :: [TestTree]
+test_state = Test.State.test_state
 
 main :: IO ()
 main = do

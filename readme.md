@@ -25,6 +25,14 @@ Nomenclature
 | M      | Mean anomaly                     |                                |
 | E      | Eccentric anomaly                | Only for elliptic orbits       |
 | ν      | True anomaly                     |                                |
+| r      | Orbital position                 |                                |
+| v      | Orbital velocity                 |                                |
+| h      | Specific angular momentum        |                                |
+| n      | Ascending node vector            |                                |
+| e      | Eccentricity vector              |                                |
+| E      | Specific mechanical energy       |                                |
+| K      | Specific kinetic energy          |                                |
+| U      | Specific potential energy        |                                |
 
 
 Note that in the Haskell source uppercase symbols such as Ω and M are written

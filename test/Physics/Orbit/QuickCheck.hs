@@ -2,20 +2,25 @@
 {-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
 
 module Physics.Orbit.QuickCheck
   ( CircularOrbit(..)
   , EllipticOrbit(..)
   , ParabolicOrbit(..)
   , HyperbolicOrbit(..)
+  , NonInclinedStateVectors(..)
   , unitOrbit
   ) where
 
 import Data.UnitsOfMeasure            (Quantity, u)
 import Data.UnitsOfMeasure.QuickCheck (PositiveQuantity (..))
-import Physics.Orbit
-  (Distance, InclinationSpecifier (..), Orbit (..), PeriapsisSpecifier (..),
-  Unitless)
+import Linear.QuickCheck              ()
+import Linear.V3
+import Physics.Orbit                  (Distance, InclinationSpecifier (..),
+                                       Orbit (..), PeriapsisSpecifier (..),
+                                       Unitless)
+import Physics.Orbit.State            (StateVectors (..))
 import System.Random                  (Random)
 import Test.QuickCheck                (Arbitrary (..), choose, oneof, suchThat)
 
@@ -31,6 +36,9 @@ newtype ParabolicOrbit a = ParabolicOrbit {getParabolicOrbit :: Orbit a}
   deriving(Show, Eq)
 
 newtype HyperbolicOrbit a = HyperbolicOrbit {getHyperbolicOrbit :: Orbit a}
+  deriving(Show, Eq)
+
+newtype NonInclinedStateVectors a = NonInclinedStateVectors {getStateVectors :: StateVectors a}
   deriving(Show, Eq)
 
 instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (Orbit a) where
@@ -89,13 +97,24 @@ instance (Num a, Ord a, Arbitrary a) => Arbitrary (HyperbolicOrbit a) where
 instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
   arbitrary = oneof [pure NonInclined, Inclined <$> arbitrary <*> arbitrary]
   shrink Inclined { .. } = [NonInclined]
-  shrink NonInclined = []
+  shrink NonInclined     = []
 
 -- | The instnace of Arbitrary for PeriapsisSpecifier doesn't generate Circular
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (PeriapsisSpecifier a) where
   arbitrary = Eccentric <$> arbitrary
   shrink (Eccentric x) = if x == [u|0 rad|] then [] else [Eccentric [u|0 rad|]]
   shrink Circular = []
+
+instance (Eq a, Num a, Arbitrary a) => Arbitrary (StateVectors a) where
+  arbitrary = do
+    r <- arbitrary `suchThat` (/= pure [u|0m|])
+    v <- arbitrary `suchThat` (/= pure [u|0m/s|])
+    pure $ StateVectors r v
+
+instance (Eq a, Num a, Arbitrary a) => Arbitrary (NonInclinedStateVectors a) where
+  arbitrary = do
+    StateVectors (V3 rx ry _) (V3 vx vy _) <- arbitrary
+    pure $ NonInclinedStateVectors (StateVectors (V3 rx ry [u|0m|]) (V3 vx vy [u|0m/s|]))
 
 --------------------------------------------------------------------------------
 -- Shrinking

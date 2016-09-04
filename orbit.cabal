@@ -25,13 +25,16 @@ library
   exposed-modules:
     Physics.Orbit
     Physics.Orbit.Anomaly
+    Physics.Orbit.State
     Physics.Radian
-  other-modules:
     Data.UnitsOfMeasure.Extra
+  other-modules:
+    Linear.Quaternion.Extra
   build-depends:
     ad         >= 4.3.2 && < 4.4,
     base       >= 4.8   && < 4.10,
     exact-real >= 0.12  && < 0.13,
+    microlens  >= 0.4   && < 0.5,
     linear     >= 1.20  && < 1.21,
     uom-plugin >= 0.2   && < 0.3
   hs-source-dirs:      src
@@ -47,15 +50,12 @@ test-suite test
   ghc-options:
     -Wall -threaded -O2
   hs-source-dirs:
-    test,
-    src
+    test
   main-is:
     Test.hs
   other-modules:
     Physics.Orbit.QuickCheck
-    Physics.Radian
     Data.CReal.QuickCheck
-    Data.UnitsOfMeasure.Extra
     Data.UnitsOfMeasure.QuickCheck
     Test.QuickCheck.Extra
     WrappedAngle
