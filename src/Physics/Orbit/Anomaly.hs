@@ -43,9 +43,7 @@ import Physics.Orbit
 import Control.Monad                ((<=<))
 import Data.Bifunctor               (bimap, second)
 import Data.CReal.Converge          (Converge, convergeErr)
-import Data.UnitsOfMeasure.Defs     ()
 import Data.UnitsOfMeasure.Extra
-import Data.UnitsOfMeasure.Show     ()
 import Numeric.AD                   (Mode, Scalar, auto)
 import Numeric.AD.Halley            (findZero, findZeroNoEq)
 import Numeric.AD.Internal.Identity (Id (..))

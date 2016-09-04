@@ -48,8 +48,6 @@ module Physics.Orbit
 
 import Data.UnitsOfMeasure.Defs     ()
 import Data.UnitsOfMeasure.Extra
-import Data.UnitsOfMeasure.Internal (Quantity (..))
-import Data.UnitsOfMeasure.Show     ()
 import Linear.V3                    (V3)
 import Physics.Radian               (turn)
 
@@ -264,9 +262,9 @@ apoapsis o =
 meanMotion :: (Floating a, Ord a) => Orbit a -> Quantity a [u|rad/s|]
 meanMotion o =
   case classify o of
-    Elliptic   -> sqrt' (μ /: cube a)
-    Hyperbolic -> sqrt' (μ /: negate' (cube a))
-    Parabolic  -> 2 *: sqrt' (μ /: cube l)
+    Elliptic   -> convert $ sqrt' (μ /: cube a)
+    Hyperbolic -> convert $ sqrt' (μ /: negate' (cube a))
+    Parabolic  -> convert $ 2 *: sqrt' (μ /: cube l)
   where
     Just a = semiMajorAxis o
     μ = primaryGravitationalParameter o
