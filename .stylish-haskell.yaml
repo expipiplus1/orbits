@@ -15,6 +15,14 @@ steps:
   #     # true.
   #     add_language_pragma: true
 
+  # Align the right hand side of some elements.  This is quite conservative
+  # and only applies to statements where each element occupies a single
+  # line.
+  - simple_align:
+      cases: true
+      top_level_patterns: true
+      records: true
+
   # Import cleanup
   - imports:
       # There are different ways we can align names and lists.
@@ -77,7 +85,7 @@ steps:
       #   >     )
       #
       # Default: inline
-      long_list_align: new_line
+      long_list_align: inline
 
       # List padding determines indentation of import list on lines after import.
       # This option affects 'list_align' and 'long_list_align'.
@@ -128,9 +136,6 @@ steps:
       # is set to true, it will remove those redundant pragmas. Default: true.
       remove_redundant: true
 
-  # Align the types in record declarations
-  - records: {}
-
   # Replace tabs by spaces. This is disabled by default.
   # - tabs:
   #     # Number of spaces to use for each tab. Default: 8, as specified by the
@@ -143,6 +148,18 @@ steps:
 # A common setting is the number of columns (parts of) code will be wrapped
 # to. Different steps take this into account. Default: 80.
 columns: 80
+
+# By default, line endings are converted according to the OS. You can override
+# preferred format here.
+#
+# - native: Native newline format. CRLF on Windows, LF on other OSes.
+#
+# - lf: Convert to LF ("\n").
+#
+# - crlf: Convert to CRLF ("\r\n").
+#
+# Default: native.
+newline: native
 
 # Sometimes, language extensions are specified in a cabal file or from the
 # command line instead of using language pragmas in the file. stylish-haskell

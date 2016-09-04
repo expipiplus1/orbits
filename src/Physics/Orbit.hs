@@ -46,10 +46,10 @@ module Physics.Orbit
 
   ) where
 
-import Data.UnitsOfMeasure.Defs     ()
+import Data.UnitsOfMeasure.Defs  ()
 import Data.UnitsOfMeasure.Extra
-import Linear.V3                    (V3)
-import Physics.Radian               (turn)
+import Linear.V3                 (V3)
+import Physics.Radian            (turn)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -277,7 +277,7 @@ period :: (Floating a, Ord a) => Orbit a -> Maybe (Time a)
 period o =
   case classify o of
     Elliptic -> Just p
-    _ -> Nothing
+    _        -> Nothing
   where
     n = meanMotion o
     p = turn /: n

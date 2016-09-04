@@ -7,6 +7,6 @@ module Test.Exact
 import Data.CReal (CReal)
 
 -- | The type used for tests which require exact arithmetic. They are compared
--- at a resolution of 2^32
+-- at a resolution of 2^-32
 type Exact = CReal 32
 
