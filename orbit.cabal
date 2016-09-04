@@ -24,6 +24,7 @@ source-repository head
 library
   exposed-modules:
     Physics.Orbit
+    Physics.Orbit.Anomaly
     Physics.Radian
   other-modules:
     Data.UnitsOfMeasure.Extra

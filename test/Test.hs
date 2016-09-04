@@ -22,6 +22,7 @@ import Data.UnitsOfMeasure.Extra
   (cube, div', negate', square, u, unQuantity, (*:), (/:))
 import Numeric                      (readFloat)
 import Physics.Orbit
+import Physics.Orbit.Anomaly
 import Physics.Orbit.QuickCheck
 import Physics.Radian               (halfTurn, turn)
 import Test.QuickCheck.Arbitrary    (Arbitrary)

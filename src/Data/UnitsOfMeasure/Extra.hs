@@ -11,6 +11,7 @@ module Data.UnitsOfMeasure.Extra
   , mod'
   , div'
   , divMod'
+  , unsafeMapUnit
   ) where
 
 import           Data.Coerce                  (coerce)
@@ -35,3 +36,6 @@ divMod' :: forall a b v. (Real a, Integral b)
         => Quantity a v -> Quantity a v
         -> (Quantity b One, Quantity a v)
 divMod' = coerce (F.divMod' :: a -> a -> (b, a))
+
+unsafeMapUnit :: (a -> b) -> Quantity a u -> Quantity b u
+unsafeMapUnit f (MkQuantity x) = MkQuantity (f x)
