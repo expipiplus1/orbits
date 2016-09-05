@@ -31,8 +31,11 @@ module Physics.Orbit
   , semiMajorAxis
   , semiMinorAxis
   , semiLatusRectum
+
+    -- *** Hyperbolic orbit utilities
   , hyperbolicApproachAngle
   , hyperbolicDepartureAngle
+  , hyperbolicExessSpeed
 
     -- * Unit synonyms
   , Time
@@ -312,4 +315,15 @@ hyperbolicDepartureAngle o =
 -- and -π when given a parabolic orbit.
 hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
+
+-- | Calculate the magnitude of the hyperbolic excess velocity
+hyperbolicExessSpeed ::
+  (Floating a, Ord a) =>
+  Orbit a -> Maybe (Speed a)
+hyperbolicExessSpeed o = case classify o of
+  Hyperbolic -> do
+    a <- semiMajorAxis o
+    let μ = primaryGravitationalParameter o
+    pure $ sqrt' (μ /: negate' a)
+  _ -> Nothing
 
