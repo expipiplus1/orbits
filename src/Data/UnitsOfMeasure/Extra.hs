@@ -13,6 +13,7 @@ module Data.UnitsOfMeasure.Extra
   , div'
   , divMod'
     -- ** Trigonometry
+  , sin'
   , cos'
   , acos'
     -- ** Linear
@@ -53,6 +54,11 @@ divMod' :: forall a b v. (Real a, Integral b)
         => Quantity a v -> Quantity a v
         -> (Quantity b One, Quantity a v)
 divMod' = coerce (F.divMod' :: a -> a -> (b, a))
+
+sin' :: forall a.
+        Floating a
+     => Quantity a [u|rad|] -> Quantity a One
+sin' = coerce (sin :: a -> a)
 
 cos' :: forall a.
         Floating a
