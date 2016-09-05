@@ -15,6 +15,10 @@ module Physics.Orbit.State
   ( -- * Orbital state
     StateVectors(..)
 
+    -- ** Conversions between all elements
+  , orbitFromStateVectors
+  , stateVectorsFromTrueAnomaly
+
     -- ** Utilities
   , isValid
   , distance
@@ -39,15 +43,16 @@ module Physics.Orbit.State
     -- *** At the True anomaly
   , distanceAtTrueAnomaly
   , positionAtTrueAnomaly
+  , speedAtTrueAnomaly
+  , radialVelocityAtTrueAnomaly
+  , tangentialVelocityAtTrueAnomaly
+  , velocityInPlaneAtTrueAnomaly
+  , velocityAtTrueAnomaly
 
     -- ** Rotations between reference frames
   , planeToWorld
   , worldToPlane
   , orbitalPlaneQuaternion
-
-    -- ** Conversions between all elements
-  , orbitFromStateVectors
-  ,
   ) where
 
 import Data.UnitsOfMeasure.Defs     ()
@@ -60,6 +65,8 @@ import Linear.Quaternion.Extra      hiding (Angle)
 import Linear.V3
 import Physics.Orbit                hiding (isValid)
 import Physics.Radian
+
+{-# ANN module "HLint: Reduce Duplication" #-}
 
 -- | A position and velocity of an orbiting body.
 data StateVectors a = StateVectors
@@ -219,7 +226,8 @@ trueAnomalyFromStateVectors μ rv = ν
 --
 -- @∀ o. planeToWorld o . worldToPlane o = id@
 planeToWorld :: (RealFloat a, Conjugate a)
-             => Orbit a -> V3 (Distance a) -> V3 (Distance a)
+             => Orbit a
+             -> V3 (Quantity a ([u|m|] *: u)) -> V3 (Quantity a ([u|m|] *: u))
 planeToWorld o = fmap MkQuantity
                . rotate (orbitalPlaneQuaternion o)
                . fmap unQuantity
@@ -253,14 +261,63 @@ orbitalPlaneQuaternion o = inclinationQuat * inPlaneQuat
 
 distanceAtTrueAnomaly :: (Ord a, Floating a)
                       => Orbit a -> Angle a -> Distance a
-distanceAtTrueAnomaly o ν = case semiMajorAxis o of
-  -- Parabolic orbit
-  Nothing -> let h = h in undefined
-  -- Elliptic or hyperbolic
-  Just a -> let e = eccentricity o
-            in a *: (1 - square e) /: (1 + e * cos' ν)
+distanceAtTrueAnomaly o ν = r
+  where r = l /: (1 + e * cos' ν)
+        l = semiLatusRectum o
+        e = eccentricity o
 
-positionAtTrueAnomaly = positionAtTrueAnomaly
+positionInPlaneAtTrueAnomaly ::
+  (RealFloat a, Conjugate a) => Orbit a -> Angle a -> V3 (Distance a)
+positionInPlaneAtTrueAnomaly o ν = rPlane
+  where rPlane = V3 (cos' ν *: r) (sin' ν *: r) [u|0m|]
+        r = distanceAtTrueAnomaly o ν
+
+positionAtTrueAnomaly ::
+  (RealFloat a, Conjugate a) =>
+  Orbit a -> Angle a -> V3 (Distance a)
+positionAtTrueAnomaly o ν = planeToWorld o (positionInPlaneAtTrueAnomaly o ν)
+
+speedAtTrueAnomaly ::
+  (Floating a, Ord a) =>
+  Orbit a -> Angle a -> Speed a
+speedAtTrueAnomaly o ν = case classify o of
+  Parabolic -> sqrt' (2 *: μ /: r)
+  _         -> sqrt' (μ *: (2 /: r -: 1 /: a))
+    where Just a = semiMajorAxis o
+  where μ = primaryGravitationalParameter o
+        r = distanceAtTrueAnomaly o ν
+
+radialVelocityAtTrueAnomaly :: Floating a => Orbit a -> Angle a -> Speed a
+radialVelocityAtTrueAnomaly o ν = vRadial
+  where vRadial = sqrt' (μ /: l) *: e *: sin' ν
+        l = semiLatusRectum o
+        μ = primaryGravitationalParameter o
+        e = eccentricity o
+
+tangentialVelocityAtTrueAnomaly :: Floating a => Orbit a -> Angle a -> Speed a
+tangentialVelocityAtTrueAnomaly o ν = vTangent
+  where vTangent = sqrt' (μ /: l) *: (1 + e *: cos' ν)
+        l = semiLatusRectum o
+        μ = primaryGravitationalParameter o
+        e = eccentricity o
+
+velocityInPlaneAtTrueAnomaly ::
+  Floating a =>
+  Orbit a -> Angle a -> V3 (Speed a)
+velocityInPlaneAtTrueAnomaly o ν = V3 vX vY [u|0m/s|]
+  where n = sqrt' (μ /: l)
+        l = semiLatusRectum o
+        μ = primaryGravitationalParameter o
+        e = eccentricity o
+        vX = negate' n *: sin' ν
+        vY = n *: (e + cos' ν)
+
+velocityAtTrueAnomaly ::
+  (RealFloat a, Conjugate a) =>
+  Orbit a
+  -> Angle a
+  -> V3 (Speed a)
+velocityAtTrueAnomaly o ν = planeToWorld o (velocityInPlaneAtTrueAnomaly o ν)
 
 --------------------------------------------------------------------------------
 -- Converting between all elements
@@ -281,9 +338,12 @@ orbitFromStateVectors μ rv =
           , primaryGravitationalParameter = μ
           }
 
--- | Create a function mapping time, t, to state vectors for an orbit
-stateVectorsFromOrbitAtTime :: Orbit a -> Time a -> StateVectors a
-stateVectorsFromOrbitAtTime = undefined
+-- | Calculate the state vectors when the orbit is at a given true anomaly, ν
+stateVectorsFromTrueAnomaly ::
+  (RealFloat a, Conjugate a) => Orbit a -> Angle a -> StateVectors a
+stateVectorsFromTrueAnomaly o ν = StateVectors r v
+  where r = positionAtTrueAnomaly o ν
+        v = velocityAtTrueAnomaly o ν
 
 {-
 
