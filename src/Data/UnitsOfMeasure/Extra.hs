@@ -16,6 +16,7 @@ module Data.UnitsOfMeasure.Extra
   , sin'
   , cos'
   , acos'
+  , atan2'
     -- ** Linear
   , cross'
   , dot'
@@ -69,6 +70,11 @@ acos' :: forall a.
          Floating a
       => Quantity a One -> Quantity a [u|rad|]
 acos' = coerce (acos :: a -> a)
+
+atan2' :: forall a.
+          RealFloat a
+       => Quantity a One -> Quantity a One -> Quantity a [u|rad|]
+atan2' = coerce (atan2 :: a -> a -> a)
 
 cross' :: forall a u v.
           Num a
