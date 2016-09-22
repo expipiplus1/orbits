@@ -11,6 +11,7 @@ module Main
   ) where
 
 import Data.Maybe                (fromJust)
+import Test.QuickCheck.Extra ((>!))
 import Data.UnitsOfMeasure.Extra (cube, negate', square, u, (*:), (/:))
 import Test.Tasty                (TestTree, defaultIngredients,
                                   defaultMainWithIngredients, includingOptions,
