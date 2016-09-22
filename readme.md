@@ -8,31 +8,32 @@ The main data type is Orbit, which describes the path of a body in orbit.
 Nomenclature
 -----------
 
-| Symbol | Meaning                          | Notes                          |
-|--------|----------------------------------|--------------------------------|
-| o      | Orbit                            |                                |
-| a      | Semi-major axis                  | Negative for hyperbolic orbits |
-| b      | Semi-minor axis                  | Negative for hyperbolic orbits |
-| e      | Eccentricity                     |                                |
-| q      | Periapsis                        |                                |
-| i      | Inclination                      |                                |
-| μ      | Standard gravitational parameter |                                |
-| Ω      | Longitude of the ascending node  |                                |
-| l      | Semi-latus Rectum                |                                |
-| n      | Mean motion                      |                                |
-| p      | Period                           |                                |
-| t      | Time since periapse              |                                |
-| M      | Mean anomaly                     |                                |
-| E      | Eccentric anomaly                | Only for elliptic orbits       |
-| ν      | True anomaly                     |                                |
-| r      | Orbital position                 |                                |
-| v      | Orbital velocity                 |                                |
-| h      | Specific angular momentum        |                                |
-| n      | Ascending node vector            |                                |
-| e      | Eccentricity vector              |                                |
-| E      | Specific mechanical energy       |                                |
-| K      | Specific kinetic energy          |                                |
-| U      | Specific potential energy        |                                |
+| Symbol | Meaning                             | Notes                          |
+|--------|-------------------------------------|--------------------------------|
+| o      | Orbit                               |                                |
+| a      | Semi-major axis                     | Negative for hyperbolic orbits |
+| b      | Semi-minor axis                     | Negative for hyperbolic orbits |
+| e      | Eccentricity                        |                                |
+| q      | Periapsis                           |                                |
+| i      | Inclination                         |                                |
+| μ      | Standard gravitational parameter    |                                |
+| Ω      | Longitude of the ascending node     |                                |
+| l      | Semi-latus Rectum                   |                                |
+| n      | Mean motion                         |                                |
+| p      | Period                              |                                |
+| t      | Time since periapse                 |                                |
+| M      | Mean anomaly                        |                                |
+| E      | Eccentric anomaly                   | Only for elliptic orbits       |
+| ν      | True anomaly                        |                                |
+| θ      | Hyperbolic approach/departure angle |                                |
+| r      | Orbital position                    |                                |
+| v      | Orbital velocity                    |                                |
+| h      | Specific angular momentum           |                                |
+| n      | Ascending node vector               |                                |
+| e      | Eccentricity vector                 |                                |
+| E      | Specific mechanical energy          |                                |
+| K      | Specific kinetic energy             |                                |
+| V      | Gravitational potential             |                                |
 
 
 Note that in the Haskell source uppercase symbols such as Ω and M are written
