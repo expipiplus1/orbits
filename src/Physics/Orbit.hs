@@ -35,7 +35,7 @@ module Physics.Orbit
     -- *** Hyperbolic orbit utilities
   , hyperbolicApproachAngle
   , hyperbolicDepartureAngle
-  , hyperbolicExessSpeed
+  , hyperbolicExcessVelocity
 
     -- ** Non-orbital functions
   , escapeVelocity
@@ -320,15 +320,16 @@ hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
 
 -- | Calculate the magnitude of the hyperbolic excess velocity
-hyperbolicExessSpeed ::
+hyperbolicExcessVelocity ::
   (Floating a, Ord a) =>
   Orbit a -> Maybe (Speed a)
-hyperbolicExessSpeed o = case classify o of
+hyperbolicExcessVelocity o = case classify o of
   Hyperbolic -> do
     a <- semiMajorAxis o
     let μ = primaryGravitationalParameter o
     pure $ sqrt' (μ /: negate' a)
-  _ -> Nothing
+  Parabolic -> Just [u|0m/s|]
+  Elliptic -> Nothing
 
 --------------------------------------------------------------------------------
 -- Non-orbital functions
