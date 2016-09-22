@@ -13,6 +13,7 @@ module Main
 import Data.Maybe                (fromJust)
 import Test.QuickCheck.Extra ((>!))
 import Data.UnitsOfMeasure.Extra (cube, negate', square, u, (*:), (/:))
+import Data.UnitsOfMeasure.QuickCheck (PositiveQuantity (..))
 import Test.Tasty                (TestTree, defaultIngredients,
                                   defaultMainWithIngredients, includingOptions,
                                   testGroup)
@@ -167,6 +168,13 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
                             (\(EllipticOrbit o) ->
                                hyperbolicDepartureAngle (o :: Orbit Double) === Nothing)
                         ]
+
+test_escapeVelocity :: [TestTree]
+test_escapeVelocity = [ testProperty "is positive"
+                          (\(PositiveQuantity μ) (PositiveQuantity r) ->
+                            escapeVelocity μ r >! [u|m/s|] (0 :: Double)
+                          )
+                      ]
 
 test_conversions :: [TestTree]
 test_conversions = Test.Anomaly.test_conversions

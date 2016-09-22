@@ -37,6 +37,9 @@ module Physics.Orbit
   , hyperbolicDepartureAngle
   , hyperbolicExessSpeed
 
+    -- ** Non-orbital functions
+  , escapeVelocity
+
     -- * Unit synonyms
   , Time
   , Distance
@@ -327,3 +330,10 @@ hyperbolicExessSpeed o = case classify o of
     pure $ sqrt' (μ /: negate' a)
   _ -> Nothing
 
+--------------------------------------------------------------------------------
+-- Non-orbital functions
+--------------------------------------------------------------------------------
+
+-- | Calculate the escape velocity for a gravity source at the given distance.
+escapeVelocity :: Floating a => Quantity a [u|m^3/s^2|] -> Distance a -> Speed a
+escapeVelocity μ r = sqrt' (2 *: μ /: r)
