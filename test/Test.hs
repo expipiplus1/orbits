@@ -24,6 +24,7 @@ import Physics.Radian           (halfTurn)
 
 import qualified Test.Anomaly
 import           Test.Exact
+import qualified Test.Radian
 import           Test.SlowTest
 import qualified Test.State
 
@@ -168,6 +169,9 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
 
 test_conversions :: [TestTree]
 test_conversions = Test.Anomaly.test_conversions
+
+test_canonicalizeAngle :: [TestTree]
+test_canonicalizeAngle = Test.Radian.test_canonicalizeAngle
 
 test_state :: [TestTree]
 test_state = Test.State.test_state

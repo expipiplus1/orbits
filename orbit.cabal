@@ -59,8 +59,9 @@ test-suite test
     Data.UnitsOfMeasure.QuickCheck
     Test.QuickCheck.Extra
     WrappedAngle
-    Test.Exact
     Test.Anomaly
+    Test.Exact
+    Test.Radian
     Test.SlowTest
   build-depends:
     base             >= 4.8   && < 4.10,
