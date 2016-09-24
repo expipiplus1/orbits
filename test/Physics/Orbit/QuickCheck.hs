@@ -15,6 +15,7 @@ module Physics.Orbit.QuickCheck
 
 import Data.UnitsOfMeasure            (Quantity, u)
 import Data.UnitsOfMeasure.QuickCheck (PositiveQuantity (..))
+import Test.QuickCheck.Checkers       (EqProp (..), eq)
 import Linear.QuickCheck              ()
 import Linear.V3
 import Physics.Orbit                  (Distance, InclinationSpecifier (..),
@@ -105,6 +106,21 @@ instance (Eq a, Num a, Arbitrary a) => Arbitrary (PeriapsisSpecifier a) where
   shrink (Eccentric x) = if x == [u|0 rad|] then [] else [Eccentric [u|0 rad|]]
   shrink Circular = []
 
+instance Eq a => EqProp (Orbit a) where
+  (=-=) = eq
+
+instance Eq a => EqProp (CircularOrbit a) where
+  (=-=) = eq
+
+instance Eq a => EqProp (EllipticOrbit a) where
+  (=-=) = eq
+
+instance Eq a => EqProp (ParabolicOrbit a) where
+  (=-=) = eq
+
+instance Eq a => EqProp (HyperbolicOrbit a) where
+  (=-=) = eq
+
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (StateVectors a) where
   arbitrary = do
     r <- arbitrary `suchThat` (/= pure [u|0m|])
@@ -115,6 +131,9 @@ instance (Eq a, Num a, Arbitrary a) => Arbitrary (NonInclinedStateVectors a) whe
   arbitrary = do
     StateVectors (V3 rx ry _) (V3 vx vy _) <- arbitrary
     pure $ NonInclinedStateVectors (StateVectors (V3 rx ry [u|0m|]) (V3 vx vy [u|0m/s|]))
+
+instance Eq a => EqProp (StateVectors a) where
+  (=-=) = eq
 
 --------------------------------------------------------------------------------
 -- Shrinking
