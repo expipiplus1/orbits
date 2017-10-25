@@ -19,6 +19,8 @@ import Test.Tasty                (TestTree, defaultIngredients,
                                   testGroup)
 import Test.Tasty.QuickCheck     (testProperty, (===), (==>))
 import Test.Tasty.TH             (testGroupGenerator)
+import Data.Coerce(coerce)
+import Test.QuickCheck.Checkers(idempotent)
 
 import Physics.Orbit
 import Physics.Orbit.QuickCheck
@@ -36,6 +38,16 @@ import qualified Test.State
 -- The tests
 --------------------------------------------------------------------------------
 
+testAllGeometries s f = testGroup s [ testProperty "circular"
+                                        (\(CircularOrbit o) -> f o)
+                                    , testProperty "elliptic"
+                                        (\(EllipticOrbit o) -> f o)
+                                    , testProperty "parabolic"
+                                        (\(EllipticOrbit o) -> f o)
+                                    , testProperty "hyperbolic"
+                                        (\(HyperbolicOrbit o) -> f o)
+                                    ]
+
 test_sanity :: [TestTree]
 test_sanity = [ testProperty "circular isValid"
                   (\(CircularOrbit o) -> isValid (o :: Orbit Double))
@@ -46,6 +58,14 @@ test_sanity = [ testProperty "circular isValid"
               , testProperty "hyperbolic isValid"
                   (\(HyperbolicOrbit o) -> isValid (o :: Orbit Double))
               ]
+
+test_normalize :: [TestTree]
+test_normalize =
+  let n :: Orbit Double -> Orbit Double
+      n = normalizeOrbit
+  in [ testProperty "circular idempotency"
+         (idempotent (coerce n :: CircularOrbit Double -> CircularOrbit Double))
+     ]
 
 test_classify :: [TestTree]
 test_classify = [ testProperty "circular"

@@ -2,7 +2,7 @@
 {-# LANGUAGE DataKinds           #-}
 -- {-# LANGUAGE FlexibleContexts      #-}
 -- {-# LANGUAGE FlexibleInstances     #-}
--- {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE QuasiQuotes         #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -21,6 +21,8 @@ module Physics.Orbit.State
 
     -- ** Utilities
   , isValid
+  , orbitalDirection
+  , LinePass(..)
   , distance
   , speed
   , specificAngularMomentum
@@ -42,6 +44,7 @@ module Physics.Orbit.State
     -- ** Extracting state vectors from orbital elements
     -- *** At the True anomaly
   , distanceAtTrueAnomaly
+  , positionInPlaneAtTrueAnomaly
   , positionAtTrueAnomaly
   , speedAtTrueAnomaly
   , radialVelocityAtTrueAnomaly
@@ -63,6 +66,7 @@ import Linear.Conjugate
 import Linear.Metric                hiding (distance)
 import Linear.Quaternion.Extra      hiding (Angle)
 import Linear.V3
+import Linear.Plucker(LinePass(..))
 import Physics.Orbit                hiding (isValid)
 import Physics.Radian
 
@@ -78,32 +82,51 @@ data StateVectors a = StateVectors
 -- Utilities
 --------------------------------------------------------------------------------
 
--- | Is this set of state vectors valid
+-- | Is this set of state vectors valid. They are invalid if they represent a
+-- degenerate orbit with a velocity of zero or a position of zero.
 isValid :: (Eq a, Num a) => StateVectors a -> Bool
 isValid (StateVectors r v) = r /= pure [u|0m|] && v /= pure [u|0m/s|]
 
+-- | 'orbitalDirection' returns the direction of the orbital axis around the
+-- universal Z axis. It returns 'CoPlanar' if the orbit has an inclination of
+-- 90 degrees.
+orbitalDirection :: (Ord a, Num a) => StateVectors a -> LinePass
+orbitalDirection rv = if | hz < [u|0m^2/s|]  -> Clockwise  
+                         | hz > [u|0m^2/s|]  -> Counterclockwise
+                         | hz == [u|0m^2/s|] -> Coplanar
+  where h = specificAngularMomentum rv
+        hz = h^._z
+
+-- | 'distance' returns the distance of the orbiting body from the center of
+-- the primary body.
 distance :: Floating a => StateVectors a -> Distance a
 distance (StateVectors r _) = norm' r
 
+-- | 'speed' returns the speed of the orbiting body relative to the primary
+-- body.
 speed :: Floating a => StateVectors a -> Speed a
 speed (StateVectors _ v) = norm' v
 
+-- | 'speedSq' returns the square of the speed of orbiting body relative to the
+-- primary body.
 speedSq :: Floating a => StateVectors a -> Quantity a [u|m^2 s^-2|]
 speedSq (StateVectors _ v) = quadrance' v
 
--- | Compute the specific angular momentum of an orbit from its state vectors.
+-- | Compute the specific angular momentum, h, of an orbiting body from its
+-- state vectors.
 specificAngularMomentum :: Num a
                         => StateVectors a
                         -> V3 (Quantity a [u|m^2/s|])
 specificAngularMomentum (StateVectors r v) = h
   where h = r `cross'` v
 
+-- | Return 'True' if the given state vectors represent an inclined orbit.
 isInclined :: (Eq a, Num a) => StateVectors a -> Bool
 isInclined (StateVectors r v) = r^._z /= [u|0m|] || v^._z /= [u|0m/s|]
 
 -- | Compute the vector pointing towards the ascening node of an orbit from its
 -- state vectors. If the orbit is not inclined then this function returns
--- nothing.
+-- 'Nothing'.
 ascendingNodeVector :: (Eq a, Num a)
                     => StateVectors a
                     -> Maybe (V3 (Quantity a One))
@@ -114,7 +137,7 @@ ascendingNodeVector rv
         h = specificAngularMomentum rv
         k = V3 0 0 1
 
--- | Compute the eccentricity vector, see
+-- | Compute the eccentricity vector, e. see
 -- https://en.wikipedia.org/wiki/Eccentricity_vector
 eccentricityVector :: Floating a
                    => Quantity a [u| m^3 s^-2 |]
@@ -153,7 +176,7 @@ inclinationFromStateVectors :: (Ord a, Floating a)
                             => StateVectors a -> InclinationSpecifier a
 inclinationFromStateVectors rv =
   case ascendingNodeVector rv of
-    Nothing -> NonInclined
+    Nothing -> error "equatorial"
     Just n  ->
       let h = specificAngularMomentum rv
           _Ω = let modΩ = acos' (n^._x / norm n)
@@ -162,7 +185,7 @@ inclinationFromStateVectors rv =
                  else turn -: modΩ
           i = acos' (h^._z /: norm' h)
       in Inclined{ longitudeOfAscendingNode = _Ω
-                 , inclination = i
+                 , nonEquatorialInclination = i
                  }
 
 -- | Calculate the semi-major axis length, a, of an orbit at the given state.
@@ -186,25 +209,31 @@ periapsisFromStateVectors :: (Floating a, Eq a)
 periapsisFromStateVectors μ rv =
   case semiMajorAxisFromStateVectors μ rv of
     Nothing -> let h = specificAngularMomentum rv
-               in quadrance' h /: μ
+               in quadrance' h /: (2 *: μ)
     Just a  -> let e = eccentricityVector μ rv
                in a *: (1 - norm' e)
 
 -- | Calculate the argument of periapsis, ω, of an orbit from its state vectors.
-argumentOfPeriapsisFromStateVectors :: (Floating a, Ord a)
+argumentOfPeriapsisFromStateVectors :: (RealFloat a, Ord a)
                                     => Quantity a [u| m^3 s^-2 |]
                                     -> StateVectors a
                                     -> PeriapsisSpecifier a
-argumentOfPeriapsisFromStateVectors μ rv = case ascendingNodeVector rv of
-  Nothing -> Circular
-  Just n -> let e = eccentricityVector μ rv
-            in Eccentric $ let modω = acos' ((n `dot'` e) /: norm' (n ^*^: e))
-                           in if e^._z < 0
-                                then turn -: modω
-                                else modω
+argumentOfPeriapsisFromStateVectors μ rv = 
+  let e = eccentricityVector μ rv
+  in if e == 0
+       then Circular
+       else Eccentric $ case ascendingNodeVector rv of
+              Nothing -> let ωDir = atan2' (e^._y) (e^._x)
+                         in if orbitalDirection rv == Clockwise
+                              then turn -: ωDir
+                              else ωDir
+              Just n -> let modω = acos' ((n `dot'` e) /: (norm' n *: norm' e))
+                        in if e^._z < 0
+                             then turn -: modω
+                             else modω
 
 -- | Calculate the true anomaly of an orbit, ν, from its state vectors
-trueAnomalyFromStateVectors :: forall a. (Floating a, Ord a)
+trueAnomalyFromStateVectors :: forall a. (Floating a, Ord a, Show a)
                             => Quantity a [u| m^3 s^-2 |]
                             -> StateVectors a
                             -> Angle a
@@ -212,7 +241,7 @@ trueAnomalyFromStateVectors μ rv = ν
   where e = eccentricityVector μ rv
         r = position rv
         v = velocity rv
-        ν = let modν = acos' ((e `dot'` r) /: norm' (e ^*^: r))
+        ν = let modν = acos' ((e `dot'` r) /: (norm' e *: norm' r))
             in if r `dot'` v < [u|0m^2/s|]
                  then turn -: modν
                  else modν
@@ -252,8 +281,10 @@ orbitalPlaneQuaternion o = inclinationQuat * inPlaneQuat
           Eccentric ω -> rotateZ ω
           Circular    -> noRotation
         inclinationQuat = case inclinationSpecifier o of
-          Inclined{..} -> rotateZ longitudeOfAscendingNode * rotateX inclination
-          NonInclined -> noRotation
+          Inclined{..}         -> rotateZ longitudeOfAscendingNode 
+                                * rotateX nonEquatorialInclination
+          EquatorialPrograde   -> noRotation
+          EquatorialRetrograde -> rotateX (negate' halfTurn)
 
 --------------------------------------------------------------------------------
 -- Elements from state vectors
@@ -324,7 +355,7 @@ velocityAtTrueAnomaly o ν = planeToWorld o (velocityInPlaneAtTrueAnomaly o ν)
 --------------------------------------------------------------------------------
 
 -- | Calculate all of an orbits elements from a set of state vectors
-orbitFromStateVectors :: (Ord a, Floating a)
+orbitFromStateVectors :: (Ord a, RealFloat a)
                       => Quantity a [u| m^3 s^-2 |] -> StateVectors a -> Orbit a
 orbitFromStateVectors μ rv =
   let inc = inclinationFromStateVectors rv

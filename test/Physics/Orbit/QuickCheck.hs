@@ -96,9 +96,10 @@ instance (Num a, Ord a, Arbitrary a) => Arbitrary (HyperbolicOrbit a) where
   shrink (HyperbolicOrbit o) = HyperbolicOrbit <$> shrinkOrbit o
 
 instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
-  arbitrary = oneof [pure NonInclined, Inclined <$> arbitrary <*> arbitrary]
-  shrink Inclined { .. } = [NonInclined]
-  shrink NonInclined     = []
+  arbitrary = oneof [pure EquatorialPrograde, pure EquatorialRetrograde, Inclined <$> arbitrary <*> arbitrary]
+  shrink Inclined { .. } = [EquatorialPrograde, EquatorialRetrograde]
+  shrink EquatorialRetrograde = [EquatorialPrograde]
+  shrink EquatorialPrograde = []
 
 -- | The instnace of Arbitrary for PeriapsisSpecifier doesn't generate Circular
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (PeriapsisSpecifier a) where
@@ -173,7 +174,7 @@ shrinkPrimaryGravitationalParameter μ | μ == [u|1 m^3 s^-2|] = []
 unitOrbit :: Num a => Orbit a
 unitOrbit = Orbit{ eccentricity = 0
                  , periapsis    = [u|1m|]
-                 , inclinationSpecifier = NonInclined
+                 , inclinationSpecifier = EquatorialPrograde
                  , periapsisSpecifier = Circular
                  , primaryGravitationalParameter = [u|1m^3s^-2|]
                  }

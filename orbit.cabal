@@ -63,6 +63,7 @@ test-suite test
     Test.Exact
     Test.Radian
     Test.SlowTest
+    Test.State
   build-depends:
     base             >= 4.8   && < 4.10,
     ad               >= 4.3.2 && < 4.4,

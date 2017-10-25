@@ -19,15 +19,20 @@ module Physics.Orbit
   , Classification(..)
 
     -- * Functions for dealing with orbits
+
     -- ** Type conversions
   , unsafeMapOrbit
+
     -- ** Utilities
   , isValid
   , classify
+  , normalizeOrbit
+
     -- ** Orbital elements
   , apoapsis
   , meanMotion
   , period
+  , inclination
   , semiMajorAxis
   , semiMinorAxis
   , semiLatusRectum
@@ -55,7 +60,7 @@ module Physics.Orbit
 import Data.UnitsOfMeasure.Defs  ()
 import Data.UnitsOfMeasure.Extra
 import Linear.V3                 (V3)
-import Physics.Radian            (turn)
+import Physics.Radian
 
 --------------------------------------------------------------------------------
 -- Types
@@ -139,10 +144,11 @@ data InclinationSpecifier a = -- | The orbit does not lie exactly in the
                                          --
                                          -- The angle between the reference
                                          -- plane and the orbital plane
-                                       , inclination              :: !(Angle a)
+                                       , nonEquatorialInclination :: !(Angle a)
                                        }
                               -- | The orbit lies in the reference plane
-                            | NonInclined
+                            | EquatorialPrograde
+                            | EquatorialRetrograde
   deriving (Show, Eq)
 
 -- | Along with 'InclinationSpecifier' the 'PeriapsisSpecifier' describes
@@ -183,7 +189,8 @@ unsafeMapInclinationSpecifier :: (a -> b)
                               -> InclinationSpecifier a -> InclinationSpecifier b
 unsafeMapInclinationSpecifier f s = case s of
   Inclined _Ω i -> Inclined (unsafeMapUnit f _Ω) (unsafeMapUnit f i)
-  NonInclined   -> NonInclined
+  EquatorialPrograde -> EquatorialPrograde
+  EquatorialRetrograde -> EquatorialRetrograde
 
 unsafeMapPeriapsisSpecifier :: (a -> b)
                             -> PeriapsisSpecifier a -> PeriapsisSpecifier b
@@ -208,6 +215,19 @@ isValid o = e >= 0 &&
     e = eccentricity o
     q = periapsis o
     μ = primaryGravitationalParameter o
+
+-- | 'normalizeOrbit' ensures that the inclination of an orbit is in the closed
+-- range [0°..180°], the argument of periapsis is in the range [-π..π) and that
+-- the longitude of the ascending node is in the range [-π..π).
+normalizeOrbit :: (Real a, Floating a) => Orbit a -> Orbit a
+normalizeOrbit o =
+  let iS = inclinationSpecifier o
+      pS = periapsisSpecifier o
+      iS' = iS
+      pS' = case pS of
+              Circular    -> Circular
+              Eccentric ω -> Eccentric (canonicalizeAngle ω)
+  in o{inclinationSpecifier = iS', periapsisSpecifier = pS'}
 
 -- | 'classify' is a funciton which returns the orbit's class.
 classify :: (Num a, Ord a) => Orbit a -> Classification
@@ -287,6 +307,14 @@ period o =
   where
     n = meanMotion o
     p = turn /: n
+
+-- | Calculate the inclination, i, of an orbit. This returns 0 radians when the
+-- orbit is a prograde equatorial orbit and π radians when the orbit is a retrograde equatorial orbit.
+inclination :: Floating a => Orbit a -> Angle a
+inclination o = case inclinationSpecifier o of
+  Inclined _ i         -> i
+  EquatorialPrograde   -> [u|0 rad|]
+  EquatorialRetrograde -> halfTurn
 
 -- | Calculate the angle at which a body leaves the system when on an escape
 -- trajectory relative to the argument of periapsis. This is the limit of the
