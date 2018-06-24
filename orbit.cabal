@@ -65,7 +65,7 @@ test-suite test
     checkers         >= 0.3,
     exact-real       >= 0.12,
     linear           >= 1.18,
-    QuickCheck       >= 2.8,
+    QuickCheck       >= 2.10,
     random           >= 1.1,
     tagged           >= 0.8,
     tasty            >= 0.10,

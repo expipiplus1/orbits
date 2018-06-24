@@ -4,12 +4,12 @@ module Data.CReal.QuickCheck
   ( module Data.CReal
   ) where
 
-import Data.CReal
-import GHC.TypeLits
-import Test.QuickCheck.Arbitrary
-  (Arbitrary (..), arbitrarySizedFractional, shrinkRealFracToInteger)
+import           Data.CReal
+import           GHC.TypeLits
+import           Test.QuickCheck.Arbitrary (Arbitrary (..),
+                                            arbitrarySizedFractional,
+                                            shrinkRealFrac)
 
 instance KnownNat n => Arbitrary (CReal n) where
   arbitrary = arbitrarySizedFractional
-  shrink = shrinkRealFracToInteger
-
+  shrink = shrinkRealFrac
