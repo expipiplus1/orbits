@@ -1,2 +1,3 @@
-with (import <nixpkgs> {}).pkgs;
-(pkgs.haskellPackages.callPackage ./. {}).env
+{ pkgs ? import <nixpkgs> {}, compiler ? "ghc822" }:
+
+(import ./default.nix { inherit pkgs compiler; }).env

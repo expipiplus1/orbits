@@ -1,18 +1,25 @@
-{ mkDerivation, ad, base, checkers, directory, doctest, exact-real
-, filepath, linear, QuickCheck, random, safe, stdenv, tagged, tasty
-, tasty-quickcheck, tasty-th, uom-plugin
-}:
-mkDerivation {
-  pname = "orbit";
-  version = "0.2.0.0";
-  src = ./.;
-  libraryHaskellDepends = [ ad base exact-real linear uom-plugin ];
-  testHaskellDepends = [
-    ad base checkers directory doctest exact-real filepath linear
-    QuickCheck random safe tagged tasty tasty-quickcheck tasty-th
-    uom-plugin
-  ];
-  homepage = "https://github.com/expipiplus1/orbit";
-  description = "Types and functions for Kepler orbits";
-  license = stdenv.lib.licenses.mit;
-}
+{ pkgs ? import <nixpkgs> {}, compiler ? "ghc822" }:
+
+# Strip out the irrelevant parts of the source
+let src = with pkgs.lib;
+          let p = n: (toString ./dist) == n;
+          in cleanSourceWith {filter = (n: t: !p n); src = cleanSource ./.;};
+
+    haskellPackages = pkgs.haskell.packages.${compiler}.override {
+      overrides = self: super: {
+        uom-plugin = pkgs.haskell.lib.dontCheck super.uom-plugin;
+      };
+    };
+
+    extraEnvPackages = [
+    ];
+
+    drv =
+      haskellPackages.callCabal2nix "orbit" src {};
+
+    envWithExtras = pkgs.lib.overrideDerivation drv.env (attrs: {
+      buildInputs = attrs.buildInputs ++ extraEnvPackages;
+    });
+
+in
+  drv // { env = envWithExtras; }
