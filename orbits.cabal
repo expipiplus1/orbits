@@ -4,7 +4,7 @@ cabal-version: 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fc9f6daefe234a230c2e24fab66760ade83eef4181299e91d005ee3eadf98aaa
+-- hash: 19ff836740d3a6d31f4b16ef06879a924c919fabab962046e35730122d362dff
 
 name:           orbits
 version:        0.3
@@ -15,7 +15,7 @@ bug-reports:    https://github.com/expipiplus1/orbit/issues
 author:         Joe Hermaszewski
 maintainer:     Joe Hermaszewski <keep.it.real@monoid.al>
 copyright:      2020 Joe Hermaszewski
-license:        MIT
+license:        BSD3
 license-file:   LICENSE
 build-type:     Custom
 extra-source-files:
