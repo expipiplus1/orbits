@@ -13,9 +13,9 @@ jobs:
         ghc: ['8.10.1', '8.8.3', '8.6.5', '8.4.4', '8.2.2', '8.0.2']
         cabal: ['3.0']
         os: [ubuntu-latest]
+      fail-fast: false
 
     runs-on: ${{ matrix.os }}
-
 
     steps:
     - uses: actions/checkout@v2
