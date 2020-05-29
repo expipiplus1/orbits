@@ -5,13 +5,37 @@ Types and functions for dealing with Kepler orbits.
 
 The main data type is Orbit, which describes the path of a body in orbit.
 
+Nomenclature
+-----------
+
+| Symbol | Meaning                          | Notes                          |
+|--------|----------------------------------|--------------------------------|
+| a      | Semi-major axis                  | Negative for hyperbolic orbits |
+| b      | Semi-minor axis                  | Negative for hyperbolic orbits |
+| e      | Eccentricity                     |                                |
+| q      | Periapsis                        |                                |
+| i      | Inclination                      |                                |
+| μ      | Standard gravitational parameter |                                |
+| Ω      | Longitude of the ascending node  |                                |
+| l      | Semi-latus Rectum                |                                |
+| n      | Mean motion                      |                                |
+| p      | Period                           |                                |
+| t      | Time since periapse              |                                |
+| M      | Mean anomaly                     |                                |
+| E      | Eccentric anomaly                | Only for elliptic orbits       |
+| ν      | True anomaly                     |                                |
+
+
+Note that in the Haskell source uppercase symbols such as Ω and M are written
+with a leading underscore.
+
+
 Implementation
 --------------
 
 This package makes use of the
-[`uom-plugin`](https://hackage.haskell.org/package/uom-plugin) package to make
-sure that the implementation is correct regarding units of measure.
-
+[`uom-plugin`](https://hackage.haskell.org/package/uom-plugin) package to
+ensure that the implementation is correct regarding units of measure.
 
 Contributing
 ------------

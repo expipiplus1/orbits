@@ -1,7 +1,0 @@
-resolver: nightly-2016-01-08
-packages:
-- '.'
-extra-deps:
-- units-parser-0.1.0.0
-- uom-plugin-0.2.0.0
-
