@@ -54,5 +54,6 @@ jobs:
   nix:
     runs-on: ubuntu-latest
     steps:
+    - uses: cachix/install-nix-action@v8
     - uses: actions/checkout@v2
     - run: nix-build
