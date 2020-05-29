@@ -4,10 +4,10 @@ cabal-version: 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f89ff85f175201e002903dcc4c706cf8dc0f65e7f49e6981ccff18e56d031a05
+-- hash: 19ff836740d3a6d31f4b16ef06879a924c919fabab962046e35730122d362dff
 
 name:           orbits
-version:        0.2.0.0
+version:        0.3
 synopsis:       Types and functions for Kepler orbits.
 category:       Physics
 homepage:       https://github.com/expipiplus1/orbit#readme
@@ -15,7 +15,7 @@ bug-reports:    https://github.com/expipiplus1/orbit/issues
 author:         Joe Hermaszewski
 maintainer:     Joe Hermaszewski <keep.it.real@monoid.al>
 copyright:      2020 Joe Hermaszewski
-license:        MIT
+license:        BSD3
 license-file:   LICENSE
 build-type:     Custom
 extra-source-files:
@@ -45,8 +45,8 @@ library
   default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
   ghc-options: -Wall -O2
   build-depends:
-      ad >=4.3.2 && <5
-    , base >=4.8
+      ad >=4.3.2
+    , base >=4.8 && <5
     , exact-real >=0.12
     , units
     , units-defs >=2.2
