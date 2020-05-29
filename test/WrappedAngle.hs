@@ -1,7 +1,3 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE QuasiQuotes                #-}
-
 module WrappedAngle
   ( WrappedAngle(..)
   ) where

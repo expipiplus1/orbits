@@ -1,0 +1,72 @@
+name: orbits
+version: 0.2.0.0
+synopsis: Types and functions for Kepler orbits.
+category: Physics
+author: Joe Hermaszewski
+maintainer: Joe Hermaszewski <keep.it.real@monoid.al>
+copyright: 2020 Joe Hermaszewski
+github: expipiplus1/orbit
+extra-source-files:
+- .gitignore
+- readme.md
+- default.nix
+- changelog.md
+
+library:
+  source-dirs: src
+  other-modules:
+    Data.Metrology.Extra
+  dependencies:
+  - ad         >= 4.3.2 && < 5
+  - base       >= 4.8
+  - exact-real >= 0.12
+  - units
+  - units-defs >= 2.2
+  ghc-options: -O2
+
+ghc-options: -Wall
+
+default-extensions:
+  DataKinds
+  GeneralizedNewtypeDeriving
+  QuasiQuotes
+  ScopedTypeVariables
+  TypeOperators
+
+tests:
+  test:
+    main: Test.hs
+    source-dirs:
+      - test
+      - src
+    ghc-options:
+      - -threaded
+    dependencies:
+      - QuickCheck
+      - ad
+      - base
+      - checkers
+      - exact-real
+      - orbits
+      - random
+      - tagged
+      - tasty
+      - tasty-quickcheck
+      - tasty-th
+      - units
+      - units-defs
+
+  doctests:
+    main: Doctests.hs
+    other-modules: ""
+    source-dirs:
+      - test/doctest
+    dependencies:
+      - base
+      - doctest
+
+custom-setup:
+ dependencies:
+   - base
+   - Cabal
+   - cabal-doctest >= 1 && <1.1

@@ -12,7 +12,7 @@ import           Data.Metrology.SI              ( )
 import           Data.Metrology.Unsafe
 import           Data.Units.SI
 
-type PlaneAngle = MkQu_DLN D.PlaneAngle DefaultLCSU
+type PlaneAngle = MkQu_DLN D.PlaneAngle 'DefaultLCSU
 
 -- | One complete revolution in radians
 turn :: Floating a => PlaneAngle a
