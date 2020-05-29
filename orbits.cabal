@@ -4,7 +4,7 @@ cabal-version: 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 099b096829c762a3bfcddfd5c577cbf064ce6bca929237d31af2a462c60c5b97
+-- hash: fc9f6daefe234a230c2e24fab66760ade83eef4181299e91d005ee3eadf98aaa
 
 name:           orbits
 version:        0.3
@@ -45,8 +45,8 @@ library
   default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
   ghc-options: -Wall -O2
   build-depends:
-      ad >=4.3.2 && <5
-    , base >=4.8
+      ad >=4.3.2
+    , base >=4.8 && <5
     , exact-real >=0.12
     , units
     , units-defs >=2.2

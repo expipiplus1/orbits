@@ -17,8 +17,8 @@ library:
   other-modules:
     Data.Metrology.Extra
   dependencies:
-  - ad         >= 4.3.2 && < 5
-  - base       >= 4.8
+  - ad         >= 4.3.2
+  - base       >= 4.8 && < 5
   - exact-real >= 0.12
   - units
   - units-defs >= 2.2
