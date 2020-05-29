@@ -1,6 +1,10 @@
 orbit
 =====
 
+*For my uncle Zbys who watched the planets and stars.*
+
+-----
+
 Types and functions for dealing with Kepler orbits.
 
 The main data type is Orbit, which describes the path of a body in orbit.
