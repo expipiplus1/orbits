@@ -1,5 +1,5 @@
 name: orbits
-version: 0.2.0.0
+version: 0.3
 synopsis: Types and functions for Kepler orbits.
 category: Physics
 author: Joe Hermaszewski
