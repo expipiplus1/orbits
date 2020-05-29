@@ -1,21 +1,20 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
-
 module WrappedAngle
   ( WrappedAngle(..)
   ) where
 
-import Data.UnitsOfMeasure.Defs       ()
-import Data.UnitsOfMeasure.Extra      (Quantity, mod', u)
-import Data.UnitsOfMeasure.QuickCheck ()
-import Physics.Radian                 (turn)
-import Test.QuickCheck.Checkers       (EqProp (..), eq)
-import Test.Tasty.QuickCheck          (Arbitrary)
+import           Data.Constants.Mechanics.Extra
+import           Data.Metrology
+import           Data.Metrology.Extra
+import           Data.Metrology.QuickCheck      ( )
+import           Data.Metrology.Show            ( )
+import           Data.Units.SI.Parser
+import           Test.QuickCheck.Checkers       ( EqProp(..)
+                                                , eq
+                                                )
+import           Test.Tasty.QuickCheck          ( Arbitrary )
 
 -- A wrapper which compares angles for equality modulo 2π
-newtype WrappedAngle a = WrappedAngle (Quantity a [u|rad|])
+newtype WrappedAngle a = WrappedAngle (MkQu_ULN [si|rad|] 'DefaultLCSU a)
   deriving (Show, Arbitrary)
 
 instance (Floating a, Real a) => Eq (WrappedAngle a) where

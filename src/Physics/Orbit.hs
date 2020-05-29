@@ -1,14 +1,9 @@
--- Extensions for uom-plugin
-{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
 
 -- | Types and functions for dealing with Kepler orbits.
 module Physics.Orbit
@@ -26,6 +21,8 @@ module Physics.Orbit
   , apoapsis
   , meanMotion
   , period
+  , arealVelocity
+    -- *** Geometry
   , semiMajorAxis
   , semiMinorAxis
   , semiLatusRectum
@@ -61,46 +58,50 @@ module Physics.Orbit
   , Mass
   , Angle
   , Unitless
-  , Position
-  , Velocity
 
     -- * Reexported from 'Data.CReal'
   , Converge
   ) where
 
-import Control.Monad                ((<=<))
-import Data.Bifunctor               (bimap, second)
-import Data.CReal.Converge          (Converge, convergeErr)
-import Data.UnitsOfMeasure.Defs     ()
-import Data.UnitsOfMeasure.Extra
-import Data.UnitsOfMeasure.Internal (Quantity (..))
-import Data.UnitsOfMeasure.Show     ()
-import Linear.V3                    (V3)
-import Numeric.AD                   (Mode, Scalar, auto)
-import Numeric.AD.Halley            (findZero, findZeroNoEq)
-import Numeric.AD.Internal.Identity (Id (..))
-import Physics.Radian               (halfTurn, turn)
+import           Control.Monad                  ( (<=<) )
+import           Data.Bifunctor                 ( bimap
+                                                , second
+                                                )
+import           Data.CReal.Converge            ( Converge
+                                                , convergeErr
+                                                )
+import           Data.Constants.Mechanics.Extra
+import           Data.Metrology
+import           Data.Metrology.Extra
+import           Data.Metrology.Show            ( )
+import           Data.Metrology.Unsafe          ( UnsafeQu(..) )
+import           Data.Units.SI.Parser
+import           Numeric.AD                     ( Mode
+                                                , Scalar
+                                                , auto
+                                                )
+import           Numeric.AD.Halley              ( findZero
+                                                , findZeroNoEq
+                                                )
+import           Numeric.AD.Internal.Identity   ( Id(..) )
 
 --------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
 
+type Quantity u = MkQu_ULN u 'DefaultLCSU
 -- | A measure in seconds.
-type Time a     = Quantity a [u| s |]
+type Time     = Quantity [si|s|]
 -- | A measure in meters.
-type Distance a = Quantity a [u| m |]
+type Distance = Quantity [si| m |]
 -- | A measure in meters per second.
-type Speed a    = Quantity a [u| m s^-1 |]
+type Speed    = Quantity [si| m s^-1 |]
 -- | A measure in kilograms.
-type Mass a     = Quantity a [u| kg |]
+type Mass     = Quantity [si| kg |]
 -- | A measure in radians.
-type Angle a    = Quantity a [u| rad |]
+type Angle    = Quantity [si| rad |]
 -- | A unitless measure.
-type Unitless a = Quantity a One
--- | A position in space.
-type Position a = V3 (Distance a)
--- | A speed in space.
-type Velocity a = V3 (Speed a)
+type Unitless = Quantity [si||]
 
 -- | Data type defining an orbit parameterized by the type used to
 -- represent values
@@ -143,7 +144,7 @@ data Orbit a = Orbit { -- | The orbit's eccentricity, e.
                        -- G>.
                        --
                        -- 'primaryGravitationalParameter' must be positive.
-                     , primaryGravitationalParameter :: !(Quantity a [u| m^3 s^-2 |])
+                     , primaryGravitationalParameter :: !(Quantity [si| m^3 s^-2 |] a)
                      }
   deriving (Show, Eq)
 
@@ -196,8 +197,9 @@ data Classification = -- | 0 <= e < 1
                     | Hyperbolic
   deriving (Show, Read, Eq)
 
-unsafeMapUnit :: (a -> b) -> Quantity a u -> Quantity b u
-unsafeMapUnit f (MkQuantity x) = MkQuantity (f x)
+-- TODO, use the neat "UnsafeQu" newtype for unsafe instances
+unsafeMapUnit :: (a -> b) -> Qu u l a -> Qu u l b
+unsafeMapUnit f = qu . fmap f . UnsafeQu
 
 unsafeMapOrbit :: (a -> b) -> Orbit a -> Orbit b
 unsafeMapOrbit f (Orbit e q i p μ) = Orbit (unsafeMapUnit f e)
@@ -218,7 +220,6 @@ unsafeMapPeriapsisSpecifier f p = case p of
   Circular    -> Circular
   Eccentric a -> Eccentric (unsafeMapUnit f a)
 
-
 --------------------------------------------------------------------------------
 -- Functions
 --------------------------------------------------------------------------------
@@ -229,8 +230,8 @@ unsafeMapPeriapsisSpecifier f p = case p of
 isValid :: (Ord a, Num a) => Orbit a -> Bool
 isValid o = e >= 0 &&
             ((e == 0) `iff` (periapsisSpecifier o == Circular)) &&
-            q > [u|0 m|] &&
-            μ > [u|0 m^3 s^-2|]
+            q > zero &&
+            μ > zero
   where
     iff = (==) :: Bool -> Bool -> Bool
     e = eccentricity o
@@ -254,7 +255,7 @@ semiMajorAxis :: (Fractional a, Ord a) => Orbit a -> Maybe (Distance a)
 semiMajorAxis o =
   case classify o of
     Parabolic -> Nothing
-    _         -> Just $ q /: (1 -: e)
+    _         -> Just $ q |/| (1 |-| e)
   where
     q = periapsis o
     e = eccentricity o
@@ -265,16 +266,16 @@ semiMajorAxis o =
 semiMinorAxis :: (Floating a, Ord a) => Orbit a -> Distance a
 semiMinorAxis o =
   case classify o of
-    Elliptic   -> a *: sqrt' (1 -: e ^ (2::Int))
-    Parabolic  -> [u|0m|]
-    Hyperbolic -> a *: sqrt' (e ^ (2::Int) -: 1)
+    Elliptic   -> a |*| qSqrt (1 |-| e ^ (2::Int))
+    Parabolic  -> zero
+    Hyperbolic -> a |*| qSqrt (e ^ (2::Int) |-| 1)
   where
     e = eccentricity o
     Just a = semiMajorAxis o
 
 -- | Calculate the semiLatusRectum, l, of the 'Orbit'
 semiLatusRectum :: (Num a) => Orbit a -> Distance a
-semiLatusRectum orbit = e *: q +: q
+semiLatusRectum orbit = e |*| q |+| q
   where q = periapsis orbit
         e = eccentricity orbit
 
@@ -284,7 +285,7 @@ semiLatusRectum orbit = e *: q +: q
 apoapsis :: (Fractional a, Ord a) => Orbit a -> Maybe (Distance a)
 apoapsis o =
   case classify o of
-    Elliptic -> Just $ a *: (1 +: e)
+    Elliptic -> Just $ a |*| (1 |+| e)
     _        -> Nothing
   where
     Just a = semiMajorAxis o
@@ -293,12 +294,12 @@ apoapsis o =
 -- | Calculate the mean motion, n, of an orbit
 --
 -- This is the rate of change of the mean anomaly with respect to time.
-meanMotion :: (Floating a, Ord a) => Orbit a -> Quantity a [u|rad/s|]
+meanMotion :: (Floating a, Ord a) => Orbit a -> Quantity [si|rad/s|] a
 meanMotion o =
   case classify o of
-    Elliptic   -> convert $ sqrt' (μ /: cube a)
-    Hyperbolic -> convert $ sqrt' (μ /: negate' (cube a))
-    Parabolic  -> convert $ 2 *: sqrt' (μ /: cube l)
+    Elliptic   -> addRad $ qSqrt (μ |/| qCube a)
+    Hyperbolic -> addRad $ qSqrt (μ |/| qNegate (qCube a))
+    Parabolic  -> addRad $ 2 |*| qSqrt (μ |/| qCube l)
   where
     Just a = semiMajorAxis o
     μ = primaryGravitationalParameter o
@@ -314,7 +315,17 @@ period o =
     _ -> Nothing
   where
     n = meanMotion o
-    p = turn /: n
+    p = turn |/| n
+
+
+-- | Calculate the areal velocity, A, of the orbit.
+--
+-- The areal velocity is the area <https://xkcd.com/21/ swept out> by the line
+-- between the orbiting body and the primary per second.
+arealVelocity :: (Ord a, Floating a) => Orbit a -> Quantity [si|m^2/s|] a
+arealVelocity o = qSqrt (l |*| μ) |/| 2
+  where l = semiLatusRectum o
+        μ = primaryGravitationalParameter o
 
 -- | Calculate the angle at which a body leaves the system when on an escape
 -- trajectory relative to the argument of periapsis. This is the limit of the
@@ -330,9 +341,9 @@ hyperbolicDepartureAngle o =
   case classify o of
     Hyperbolic ->
       let e = eccentricity o
-          θ = convert $ acos (-1 / e)
+          θ = addRad $ acos (-1 / e)
       in Just θ
-    Parabolic -> Just (turn /: 2)
+    Parabolic -> Just (turn |/| 2)
     _ -> Nothing
 
 -- | Calculate the angle at which a body leaves the system when on a hyperbolic
@@ -345,7 +356,7 @@ hyperbolicDepartureAngle o =
 -- 'hyperbolicApproachAngle' returns Nothing when given a non-hyperbolic orbit
 -- and -π when given a parabolic orbit.
 hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
-hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
+hyperbolicApproachAngle = fmap qNegate . hyperbolicDepartureAngle
 
 -- | Calculate the time since periapse, t, when the body has the given
 -- <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>, M. M may be
@@ -355,7 +366,7 @@ hyperbolicApproachAngle = fmap negate' . hyperbolicDepartureAngle
 --
 -- The returned time is unbounded.
 timeAtMeanAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Time a
-timeAtMeanAnomaly o _M = _M /: n
+timeAtMeanAnomaly o _M = _M |/| n
   where n = meanMotion o
 
 -- | Calculate the time since periapse, t, of an elliptic orbit when at
@@ -379,7 +390,7 @@ timeAtTrueAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtTrueAnomaly o
 --
 -- The returned mean anomaly is unbounded.
 meanAnomalyAtTime :: (Floating a, Ord a) => Orbit a -> Time a -> Angle a
-meanAnomalyAtTime o t = t *: n
+meanAnomalyAtTime o t = t |*| n
   where n = meanMotion o
 
 -- | Calculate the mean anomaly, M, of an elliptic orbit when at eccentric
@@ -395,8 +406,8 @@ meanAnomalyAtEccentricAnomaly o _E = case classify o of
                                        Elliptic -> Just _M
                                        _ -> Nothing
   where e = eccentricity o
-        untypedE = convert _E
-        _M = convert (untypedE -: e *: sin untypedE)
+        untypedE = delRad _E
+        _M = addRad (untypedE |-| e |*| sin untypedE)
 
 -- | Calculate the mean anomaly, M, of an orbiting body when at the given true
 -- anomaly, ν.
@@ -439,18 +450,18 @@ eccentricAnomalyAtMeanAnomaly :: forall a. (Converge [a], Floating a, Real a)
 eccentricAnomalyAtMeanAnomaly o _M = case classify o of
                                        Elliptic -> _E
                                        _ -> Nothing
-  where (n, wrappedM) = second unQuantity (_M `divMod'` turn)
-        e = unQuantity (eccentricity o)
-        _MFloat = [u|rad|] . realToFrac $ wrappedM
+  where (n, wrappedM) = second (# [si|rad|]) (_M `divMod'` turn)
+        e = eccentricity o # [si||]
+        _MFloat = rad . realToFrac $ wrappedM
         oFloat = unsafeMapOrbit realToFrac o
         initialGuessFloat :: Angle Float
         Just initialGuessFloat = eccentricAnomalyAtMeanAnomalyFloat oFloat _MFloat
-        initialGuess = realToFrac . unQuantity $ initialGuessFloat
+        initialGuess = realToFrac . (# [si|rad|]) $ initialGuessFloat
         err :: (Mode b, Floating b, Scalar b ~ a) => b -> b
         err _E = auto wrappedM - (_E - auto e * sin _E)
-        wrappedE = fmap [u|rad|] . convergeErr (runId . abs . err .  Id) $
+        wrappedE = fmap rad . convergeErr (runId . abs . err .  Id) $
                    findZeroNoEq err initialGuess
-        _E = (+: (unsafeMapUnit fromInteger n *: turn)) <$> wrappedE
+        _E = (|+| (unsafeMapUnit fromInteger n |*| turn)) <$> wrappedE
 
 -- | 'eccentricAnomalyAtMeanAnomaly' specialized to 'Float'.
 --
@@ -460,8 +471,8 @@ eccentricAnomalyAtMeanAnomalyFloat :: Orbit Float -> Angle Float -> Maybe (Angle
 eccentricAnomalyAtMeanAnomalyFloat o _M = case classify o of
                                             Elliptic -> Just _E
                                             _ -> Nothing
-  where wrappedM = unQuantity (_M `mod'` turn)
-        e = unQuantity (eccentricity o)
+  where wrappedM = (_M `mod'` turn) # [si|rad|]
+        e = eccentricity o # [si||]
         sinM = sin wrappedM
         cosM = cos wrappedM
         -- Use a better initial guess
@@ -471,7 +482,7 @@ eccentricAnomalyAtMeanAnomalyFloat o _M = case classify o of
                        e * e * sinM * cosM +
                        0.5 * e * e * e * sinM * (3 * cosM * cosM - 1)
         _E :: Angle Float
-        _E = [u|rad|] . last . take 5 $
+        _E = rad . last . take 5 $
              findZero (\_E -> auto wrappedM - (_E - auto e * sin _E))
                       initialGuess
 
@@ -488,14 +499,14 @@ eccentricAnomalyAtTrueAnomaly o ν = case classify o of
                                        Elliptic -> Just _E
                                        _ -> Nothing
   where (n, wrappedν) = ν `divMod'` turn
-        cosν = cos (unQuantity ν)
-        -- sinν = sin (unQuantity wrappedν)
-        e = unQuantity (eccentricity o)
-        wrappedE = [u|rad|] $ acos ((e + cosν) / (1 + e * cosν))
-        -- wrappedE = [u|rad|] $ atan2 (sqrt (1 - e*e) * sinν) (e + cosν)
+        cosν = cos (ν # [si|rad|])
+        -- sinν = sin (wrappedν # [si|rad|])
+        e = eccentricity o # [si||]
+        wrappedE = rad $ acos ((e + cosν) / (1 + e * cosν))
+        -- wrappedE = rad $ atan2 (sqrt (1 - e*e) * sinν) (e + cosν)
         _E = if wrappedν < halfTurn
-               then (unsafeMapUnit fromInteger n *: turn) +: wrappedE
-               else (unsafeMapUnit fromInteger (n+1) *: turn) -: wrappedE
+               then (unsafeMapUnit fromInteger n |*| turn) |+| wrappedE
+               else (unsafeMapUnit fromInteger (n+1) |*| turn) |-| wrappedE
 
 -- | Calculate the true anomaly, ν, of a body at time since periapse, t.
 trueAnomalyAtTime :: (Converge [a], RealFloat a)
@@ -521,10 +532,16 @@ trueAnomalyAtEccentricAnomaly :: RealFloat a
 trueAnomalyAtEccentricAnomaly o _E = case classify o of
                                        Elliptic -> Just ν
                                        _        -> Nothing
-  where (n, wrappedE) = bimap (unsafeMapUnit fromInteger) unQuantity $
+  where (n, wrappedE) = bimap (unsafeMapUnit fromInteger) (# [si|rad|]) $
                         _E `divMod'` turn
-        e = unQuantity $ eccentricity o
-        wrappedν = [u|rad|] $ 2 * atan2 (sqrt (1 + e) * sin (wrappedE / 2))
+        e = eccentricity o # [si||]
+        wrappedν = rad $ 2 * atan2 (sqrt (1 + e) * sin (wrappedE / 2))
                                         (sqrt (1 - e) * cos (wrappedE / 2))
-        ν = turn *: n +: wrappedν
+        ν = turn |*| n |+| wrappedν
 
+----------------------------------------------------------------
+-- Utils
+----------------------------------------------------------------
+
+rad :: Fractional a => a -> Angle a
+rad = (% [si|rad|])

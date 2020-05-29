@@ -11,15 +11,24 @@ module Physics.Orbit.QuickCheck
   , unitOrbit
   ) where
 
-import Data.UnitsOfMeasure            (Quantity, u)
-import Data.UnitsOfMeasure.QuickCheck (PositiveQuantity (..))
-import Physics.Orbit
-  (Distance, InclinationSpecifier (..), Orbit (..), PeriapsisSpecifier (..),
-  Unitless)
-import System.Random                  (Random)
-import Test.QuickCheck                (Arbitrary (..), choose, oneof, suchThat)
+import           Data.Metrology
+import           Data.Metrology.Unsafe
+import           Data.Metrology.QuickCheck
+import           Data.Units.SI.Parser
+import           Physics.Orbit                  ( Distance
+                                                , InclinationSpecifier(..)
+                                                , Orbit(..)
+                                                , PeriapsisSpecifier(..)
+                                                , Unitless
+                                                )
+import           System.Random                  ( Random )
+import           Test.QuickCheck                ( Arbitrary(..)
+                                                , choose
+                                                , oneof
+                                                , suchThat
+                                                )
 
-{-# ANN module "HLint: ignore Reduce duplication" #-}
+{-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
 newtype CircularOrbit a = CircularOrbit {getCircularOrbit :: Orbit a}
   deriving(Show, Eq)
@@ -33,6 +42,7 @@ newtype ParabolicOrbit a = ParabolicOrbit {getParabolicOrbit :: Orbit a}
 newtype HyperbolicOrbit a = HyperbolicOrbit {getHyperbolicOrbit :: Orbit a}
   deriving(Show, Eq)
 
+-- | Use aerobreaking to shrink an orbit without expending fuel
 instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (Orbit a) where
   arbitrary = oneof
                 [ getCircularOrbit <$> arbitrary
@@ -91,10 +101,10 @@ instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
   shrink Inclined { .. } = [NonInclined]
   shrink NonInclined = []
 
--- | The instnace of Arbitrary for PeriapsisSpecifier doesn't generate Circular
+-- | The instance of Arbitrary for PeriapsisSpecifier doesn't generate Circular
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (PeriapsisSpecifier a) where
   arbitrary = Eccentric <$> arbitrary
-  shrink (Eccentric x) = if x == [u|0 rad|] then [] else [Eccentric [u|0 rad|]]
+  shrink (Eccentric x) = if x == zero then [] else [Eccentric zero]
   shrink Circular = []
 
 --------------------------------------------------------------------------------
@@ -120,22 +130,25 @@ shrinkEccentricity e | e == 0 || e == 1 || e == 2 = []
                      | otherwise = error "shrinkEccentricity"
 
 shrinkPeriapsis :: (Num a, Eq a) => Distance a -> [Distance a]
-shrinkPeriapsis a | a == [u|1m|] = []
-                  | otherwise = [[u|1m|]]
+shrinkPeriapsis a | a == Qu 1 = []
+                  | otherwise = [Qu 1]
 
-shrinkPrimaryGravitationalParameter :: (Num a, Eq a) => Quantity a [u|m^3 s^-2|] -> [Quantity a [u|m^3 s^-2|]]
-shrinkPrimaryGravitationalParameter μ | μ == [u|1 m^3 s^-2|] = []
-                                      | otherwise = [[u|1 m^3 s^-2|]]
+shrinkPrimaryGravitationalParameter
+  :: (Num a, Eq a)
+  => MkQu_ULN [si|m^3 s^-2|] 'DefaultLCSU a
+  -> [MkQu_ULN [si|m^3 s^-2|] 'DefaultLCSU a]
+shrinkPrimaryGravitationalParameter μ | μ == (Qu 1) = []
+                                      | otherwise   = [Qu 1]
 
 
 --------------------------------------------------------------------------------
 -- Extras
 --------------------------------------------------------------------------------
 
-unitOrbit :: Num a => Orbit a
+unitOrbit :: Fractional a => Orbit a
 unitOrbit = Orbit{ eccentricity = 0
-                 , periapsis    = [u|1m|]
+                 , periapsis    = 1 % [si|m|]
                  , inclinationSpecifier = NonInclined
                  , periapsisSpecifier = Circular
-                 , primaryGravitationalParameter = [u|1m^3s^-2|]
+                 , primaryGravitationalParameter = 1 % [si|m^3 s^-2|]
                  }
