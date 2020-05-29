@@ -7,10 +7,10 @@ orbit
 
 Types and functions for dealing with Kepler orbits.
 
-The main data type is Orbit, which describes the path of a body in orbit.
+The main data type is `Orbit`, which describes the path of a body in orbit.
 
 Nomenclature
------------
+------------
 
 | Symbol | Meaning                          | Notes                          |
 |--------|----------------------------------|--------------------------------|
@@ -32,7 +32,6 @@ Nomenclature
 
 Note that in the Haskell source uppercase symbols such as Ω and M are written
 with a leading underscore.
-
 
 Implementation
 --------------
