@@ -34,8 +34,8 @@ Implementation
 --------------
 
 This package makes use of the
-[`uom-plugin`](https://hackage.haskell.org/package/uom-plugin) package to
-ensure that the implementation is correct regarding units of measure.
+[`units`](https://hackage.haskell.org/package/units) package to ensure that the
+implementation is correct regarding units of measure.
 
 Contributing
 ------------
