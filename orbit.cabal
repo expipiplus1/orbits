@@ -8,7 +8,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Joe Hermaszewski
 maintainer:          Joe Hermaszewski <spaced.out@monoid.al>
-copyright:           2015 Joe Hermaszewski
+copyright:           2020 Joe Hermaszewski
 category:            Physics
 build-type:          Simple
 extra-source-files:
