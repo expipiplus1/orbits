@@ -15,6 +15,9 @@ let
       overrides = self: super:
         {
           exact-real = dontCheck (doJailbreak super.exact-real);
+          units-defs = self.callCabal2nix "" (builtins.fetchTarball
+            "https://hackage.haskell.org/package/units-defs-2.2/units-defs-2.2.tar.gz")
+            { };
         } // pkgs.lib.optionalAttrs hoogle {
           ghc = super.ghc // { withPackages = super.ghc.withHoogle; };
           ghcWithPackages = self.ghc.withPackages;

@@ -24,19 +24,24 @@ source-repository head
 library
   exposed-modules:
     Physics.Orbit
-    Physics.Radian
+    Data.Constants.Mechanics.Extra
   other-modules:
-    Data.UnitsOfMeasure.Extra
+    Data.Metrology.Extra
   build-depends:
     ad         >= 4.3.2,
     base       >= 4.8,
     exact-real >= 0.12,
     linear     >= 1.20,
-    uom-plugin >= 0.2
+    units,
+    units-defs >= 2.2
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:
     -Wall -O2
+  default-extensions:
+    DataKinds
+    TypeOperators
+    ScopedTypeVariables
 
 test-suite test
   default-language:
@@ -52,10 +57,7 @@ test-suite test
     Test.hs
   other-modules:
     Physics.Orbit.QuickCheck
-    Physics.Radian
     Data.CReal.QuickCheck
-    Data.UnitsOfMeasure.Extra
-    Data.UnitsOfMeasure.QuickCheck
     Test.QuickCheck.Extra
     WrappedAngle
   build-depends:
@@ -70,22 +72,27 @@ test-suite test
     tasty            >= 0.10,
     tasty-quickcheck >= 0.8.4,
     tasty-th         >= 0.1,
-    uom-plugin       >= 0.2,
+    units,
+    units-defs >= 2.2,
     orbit
+  default-extensions:
+    DataKinds
+    TypeOperators
+    ScopedTypeVariables
 
-test-suite doctest
-  default-language:
-    Haskell2010
-  type:
-    exitcode-stdio-1.0
-  ghc-options:
-    -Wall -threaded
-  hs-source-dirs:
-    test
-  main-is:
-    DocTest.hs
-  build-depends:
-    base,
-    directory >= 1.0,
-    doctest   >= 0.8,
-    filepath  >= 1.3
+-- test-suite doctest
+--   default-language:
+--     Haskell2010
+--   type:
+--     exitcode-stdio-1.0
+--   ghc-options:
+--     -Wall -threaded
+--   hs-source-dirs:
+--     test
+--   main-is:
+--     DocTest.hs
+--   build-depends:
+--     base,
+--     directory >= 1.0,
+--     doctest   >= 0.8,
+--     filepath  >= 1.3

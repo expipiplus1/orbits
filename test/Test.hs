@@ -4,39 +4,53 @@
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# OPTIONS_GHC -fplugin Data.UnitsOfMeasure.Plugin #-}
 
 module Main
   ( main
   ) where
 
-import Control.Applicative          ((<|>))
-import Data.Coerce                  (coerce)
-import Data.CReal                   (CReal)
-import Data.CReal.QuickCheck        ()
-import Data.Maybe                   (fromJust)
-import Data.Proxy                   (Proxy (..))
-import Data.Ratio                   ((%))
-import Data.Tagged                  (Tagged (..))
-import Data.UnitsOfMeasure.Extra
-  (cube, div', negate', square, u, unQuantity, (*:), (/:))
-import Numeric                      (readFloat)
-import Physics.Orbit
-import Physics.Orbit.QuickCheck
-import Physics.Radian               (halfTurn, turn)
-import Test.QuickCheck.Arbitrary    (Arbitrary)
-import Test.QuickCheck.Checkers     (inverse)
-import Test.Tasty
-  (TestTree, adjustOption, askOption, defaultIngredients,
-  defaultMainWithIngredients, includingOptions, testGroup)
-import Test.Tasty.Options           (IsOption (..), OptionDescription (..))
-import Test.Tasty.QuickCheck
-  (QuickCheckTests (..), testProperty, (===), (==>))
-import Test.Tasty.TH                (testGroupGenerator)
-import Text.ParserCombinators.ReadP (char, eof, readP_to_S, readS_to_P)
-import WrappedAngle                 (WrappedAngle (..))
+import           Control.Applicative            ( (<|>) )
+import           Data.CReal                     ( CReal )
+import           Data.CReal.QuickCheck          ( )
+import           Data.Coerce                    ( coerce )
+import           Data.Constants.Mechanics.Extra
+import           Data.Maybe                     ( fromJust )
+import           Data.Metrology          hiding ( (%) )
+import           Data.Metrology.Extra
+import           Data.Proxy                     ( Proxy(..) )
+import           Data.Ratio                     ( (%) )
+import           Data.Tagged                    ( Tagged(..) )
+import           Data.Units.SI.Parser
+import           Numeric                        ( readFloat )
+import           Physics.Orbit
+import           Physics.Orbit.QuickCheck
+import           Test.QuickCheck.Arbitrary      ( Arbitrary )
+import           Test.QuickCheck.Checkers       ( inverse )
+import           Test.Tasty                     ( TestTree
+                                                , adjustOption
+                                                , askOption
+                                                , defaultIngredients
+                                                , defaultMainWithIngredients
+                                                , includingOptions
+                                                , testGroup
+                                                )
+import           Test.Tasty.Options             ( IsOption(..)
+                                                , OptionDescription(..)
+                                                )
+import           Test.Tasty.QuickCheck          ( (===)
+                                                , (==>)
+                                                , QuickCheckTests(..)
+                                                , testProperty
+                                                )
+import           Test.Tasty.TH                  ( testGroupGenerator )
+import           Text.ParserCombinators.ReadP   ( char
+                                                , eof
+                                                , readP_to_S
+                                                , readS_to_P
+                                                )
+import           WrappedAngle                   ( WrappedAngle(..) )
 
-{-# ANN module "HLint: ignore Reduce duplication" #-}
+{-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
 -- | The type used for tests which require exact arithmetic. They are compared
 -- at a resolution of 2^32
@@ -114,26 +128,26 @@ test_semiMajorAxis = [ testProperty "circular"
                             fromJust (semiMajorAxis (o :: Orbit Double)) === periapsis o)
                      , testProperty "elliptic"
                          (\(EllipticOrbit o) ->
-                            fromJust (semiMajorAxis (o :: Orbit Double)) > [u|0m|])
+                            fromJust (semiMajorAxis (o :: Orbit Double)) > zero)
                      , testProperty "parabolic"
                          (\(ParabolicOrbit o) ->
                             semiMajorAxis (o :: Orbit Double) === Nothing)
                      , testProperty "hyperbolic"
                          (\(HyperbolicOrbit o) ->
-                            fromJust (semiMajorAxis (o :: Orbit Double)) < [u|0m|])
+                            fromJust (semiMajorAxis (o :: Orbit Double)) < zero)
                      ]
 
 test_semiMinorAxis :: [TestTree]
 test_semiMinorAxis = [ testGroup "range"
                          [ testProperty "elliptic: b > 0"
                              (\(EllipticOrbit o) ->
-                                semiMinorAxis (o :: Orbit Double) > [u|0m|])
+                                semiMinorAxis (o :: Orbit Double) > zero)
                          , testProperty "parabolic: b = 0"
                              (\(ParabolicOrbit o) ->
-                                semiMinorAxis (o :: Orbit Double) === [u|0m|])
+                                semiMinorAxis (o :: Orbit Double) === zero)
                          , testProperty "hyperbolic: b < 0"
                              (\(HyperbolicOrbit o) ->
-                                semiMinorAxis (o :: Orbit Double) < [u|0m|])
+                                semiMinorAxis (o :: Orbit Double) < zero)
                          ]
                      , testProperty "semiMinorAxis circular = q"
                          (\(CircularOrbit o) ->
@@ -143,12 +157,12 @@ test_semiMinorAxis = [ testGroup "range"
                              (\(EllipticOrbit o) -> let a = fromJust (semiMajorAxis (o :: Orbit Exact))
                                                         b = semiMinorAxis o
                                                         l = semiLatusRectum o
-                                                    in b *: b === a *: l)
+                                                    in b |*| b === a |*| l)
                          , testProperty "hyperbolic"
                              (\(HyperbolicOrbit o) -> let a = fromJust (semiMajorAxis (o :: Orbit Exact))
                                                           b = semiMinorAxis o
                                                           l = semiLatusRectum o
-                                                      in b *: b === negate' (a *: l))
+                                                      in b |*| b === qNegate (a |*| l))
                          ]
                      ]
 
@@ -170,19 +184,19 @@ test_apoapsis = [ testProperty "ap > q"
 
 test_meanMotion :: [TestTree]
 test_meanMotion = [ testProperty "n > 0"
-                      (\o -> meanMotion (o :: Orbit Double) > [u|0rad/s|])
+                      (\o -> meanMotion (o :: Orbit Double) > zero)
                   ]
 
 test_period :: [TestTree]
 test_period = [ testProperty "p > 0"
                   (\(EllipticOrbit o) ->
-                     fromJust (period (o :: Orbit Double)) > [u|0s|])
+                     fromJust (period (o :: Orbit Double)) > zero)
                 , testProperty "4 π a^3 / p^2 = μ"
                     (\(EllipticOrbit o) ->
                       let Just p = period (o :: Orbit Exact)
                           Just a = semiMajorAxis o
                           μ = primaryGravitationalParameter o
-                      in (4 * square pi) *: cube a /: square p === μ)
+                      in (4 * qSq pi) |*| qCube a |/| qSq p === μ)
                 , testProperty "parabolic: no p"
                     (\(ParabolicOrbit o) ->
                        period (o :: Orbit Double) === Nothing)
@@ -197,7 +211,7 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
                             (\(ParabolicOrbit o) ->
                                fromJust
                                  (hyperbolicApproachAngle (o :: Orbit Double))
-                                 === negate' halfTurn)
+                                 === qNegate halfTurn)
                         , testProperty "parabolic departure"
                             (\(ParabolicOrbit o) ->
                                fromJust
@@ -206,7 +220,7 @@ test_hyperbolicAngles = [ testProperty "parabolic approach"
                         , testProperty "hyperbolic symmetry"
                             (\(HyperbolicOrbit o) ->
                                fromJust (hyperbolicDepartureAngle (o :: Orbit Double))
-                               === negate' (fromJust (hyperbolicApproachAngle o)))
+                               === qNegate (fromJust (hyperbolicApproachAngle o)))
                         , testProperty "elliptic: no approach"
                             (\(EllipticOrbit o) ->
                                hyperbolicApproachAngle (o :: Orbit Double) === Nothing)
@@ -221,8 +235,8 @@ anomalyConversionTests :: (forall a. (RealFloat a, Show a, Arbitrary a, Converge
 anomalyConversionTests convertAnomaly fromName toName =
   [ testProperty (toName ++ " when " ++ fromName ++ " = 0")
      (\(EllipticOrbit o) ->
-       let to = convertAnomaly (o :: Orbit Double) [u|0rad|]
-       in to === [u|0rad|])
+       let to = convertAnomaly (o :: Orbit Double) zero
+       in to === zero)
 
   , testProperty (toName ++ " when " ++ fromName ++ " = π")
      (\(EllipticOrbit o) ->
@@ -251,12 +265,12 @@ timeAnomalyConversionTests :: (forall a. (RealFloat a, Show a, Arbitrary a, Conv
 timeAnomalyConversionTests timeToAnomaly toName =
   [ testProperty (toName ++ " when time = 0")
      (\(EllipticOrbit o) ->
-       let to = timeToAnomaly (o :: Orbit Double) [u|0s|]
-       in to === [u|0rad|])
+       let to = timeToAnomaly (o :: Orbit Double) zero
+       in to === zero)
 
   , testProperty (toName ++ " when time = p/2")
      (\(EllipticOrbit o) ->
-       let to = timeToAnomaly (o :: Orbit Exact) (p/:2)
+       let to = timeToAnomaly (o :: Orbit Exact) (p|/|2)
            Just p = period o
        in to === halfTurn)
 
@@ -270,7 +284,7 @@ timeAnomalyConversionTests timeToAnomaly toName =
      (\time ->
        let o = unitOrbit
            to = timeToAnomaly (o :: Orbit Exact) time
-       in unQuantity time === unQuantity to)
+       in time # [si|s|] === to # [si|rad|])
 
   , testProperty "orbit number preservation"
      (\(EllipticOrbit o) time ->
@@ -285,14 +299,14 @@ anomalyTimeConversionTests :: (forall a. (RealFloat a, Show a, Arbitrary a, Conv
 anomalyTimeConversionTests anomalyToTime fromName =
   [ testProperty ("time when " ++ fromName ++ " = 0")
      (\(EllipticOrbit o) ->
-       let t = anomalyToTime (o :: Orbit Double) [u|0rad|]
-       in t === [u|0s|])
+       let t = anomalyToTime (o :: Orbit Double) zero
+       in t === zero)
 
   , testProperty ("time when " ++ fromName ++ " = π")
      (\(EllipticOrbit o) ->
        let t = anomalyToTime (o :: Orbit Double) halfTurn
            Just p = period o
-       in t === p /: 2)
+       in t === p |/| 2)
 
   , testProperty ("time when " ++ fromName ++ " = 2π")
      (\(EllipticOrbit o) ->
@@ -304,7 +318,7 @@ anomalyTimeConversionTests anomalyToTime fromName =
      (\from ->
        let o = unitOrbit
            t = anomalyToTime (o :: Orbit Exact) from
-       in unQuantity from === unQuantity t)
+       in from # [si|rad|] === t # [si|s|])
 
   , testProperty "orbit number preservation"
      (\(EllipticOrbit o) from ->
@@ -410,9 +424,9 @@ test_areal :: [TestTree]
 test_areal = [ testProperty "elliptic areal area"
                  (\(EllipticOrbit o) -> let Just a = semiMajorAxis (o :: Orbit Exact)
                                             b = semiMinorAxis o
-                                            area = pi *: a *: b
+                                            area = pi |*| a |*| b
                                             Just p = period o
-                                        in area === p *: arealVelocity o)
+                                        in area === p |*| arealVelocity o)
              ]
 
 main :: IO ()
