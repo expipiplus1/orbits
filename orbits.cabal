@@ -4,14 +4,14 @@ cabal-version: 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 19ff836740d3a6d31f4b16ef06879a924c919fabab962046e35730122d362dff
+-- hash: 210617f8f0d2570518df3aff12361ae96ec5142dcfb2f02f4ab916fa15d44cc5
 
 name:           orbits
 version:        0.3
 synopsis:       Types and functions for Kepler orbits.
 category:       Physics
-homepage:       https://github.com/expipiplus1/orbit#readme
-bug-reports:    https://github.com/expipiplus1/orbit/issues
+homepage:       https://github.com/expipiplus1/orbits#readme
+bug-reports:    https://github.com/expipiplus1/orbits/issues
 author:         Joe Hermaszewski
 maintainer:     Joe Hermaszewski <keep.it.real@monoid.al>
 copyright:      2020 Joe Hermaszewski
@@ -26,7 +26,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/expipiplus1/orbit
+  location: https://github.com/expipiplus1/orbits
 
 custom-setup
   setup-depends:

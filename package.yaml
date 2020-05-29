@@ -5,7 +5,7 @@ category: Physics
 author: Joe Hermaszewski
 maintainer: Joe Hermaszewski <keep.it.real@monoid.al>
 copyright: 2020 Joe Hermaszewski
-github: expipiplus1/orbit
+github: expipiplus1/orbits
 extra-source-files:
 - .gitignore
 - readme.md
