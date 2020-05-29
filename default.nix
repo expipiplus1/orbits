@@ -14,7 +14,7 @@ let
     pkgs.haskell.packages.${compiler'}.override {
       overrides = self: super:
         {
-          exact-real = dontCheck (doJailbreak super.exact-real);
+          exact-real = markUnbroken (dontCheck (doJailbreak super.exact-real));
           units-defs = self.callCabal2nix "" (builtins.fetchTarball
             "https://hackage.haskell.org/package/units-defs-2.2/units-defs-2.2.tar.gz")
             { };
