@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Physics.Orbit.QuickCheck
@@ -8,12 +9,17 @@ module Physics.Orbit.QuickCheck
   , EllipticOrbit(..)
   , ParabolicOrbit(..)
   , HyperbolicOrbit(..)
+  , pattern CircularOrbitF
+  , pattern EllipticOrbitF
+  , pattern ParabolicOrbitF
+  , pattern HyperbolicOrbitF
   , unitOrbit
+  , overAllClasses
   ) where
 
 import           Data.Metrology
-import           Data.Metrology.Unsafe
 import           Data.Metrology.QuickCheck
+import           Data.Metrology.Unsafe
 import           Data.Units.SI.Parser
 import           Physics.Orbit                  ( Distance
                                                 , InclinationSpecifier(..)
@@ -23,10 +29,13 @@ import           Physics.Orbit                  ( Distance
                                                 )
 import           System.Random                  ( Random )
 import           Test.QuickCheck                ( Arbitrary(..)
+                                                , Testable
                                                 , choose
                                                 , oneof
                                                 , suchThat
                                                 )
+import           Test.Tasty                     ( TestTree )
+import           Test.Tasty.QuickCheck          ( testProperty )
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
@@ -41,6 +50,18 @@ newtype ParabolicOrbit a = ParabolicOrbit {getParabolicOrbit :: Orbit a}
 
 newtype HyperbolicOrbit a = HyperbolicOrbit {getHyperbolicOrbit :: Orbit a}
   deriving(Show, Eq)
+
+pattern CircularOrbitF :: Orbit Float -> CircularOrbit Float
+pattern CircularOrbitF o = CircularOrbit o
+
+pattern EllipticOrbitF :: Orbit Float -> EllipticOrbit Float
+pattern EllipticOrbitF o = EllipticOrbit o
+
+pattern ParabolicOrbitF :: Orbit Float -> ParabolicOrbit Float
+pattern ParabolicOrbitF o = ParabolicOrbit o
+
+pattern HyperbolicOrbitF :: Orbit Float -> HyperbolicOrbit Float
+pattern HyperbolicOrbitF o = HyperbolicOrbit o
 
 -- | Use aerobreaking to shrink an orbit without expending fuel
 instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (Orbit a) where
@@ -152,3 +173,19 @@ unitOrbit = Orbit{ eccentricity = 0
                  , periapsisSpecifier = Circular
                  , primaryGravitationalParameter = 1 % [si|m^3 s^-2|]
                  }
+
+
+----------------------------------------------------------------
+-- Constructing test trees
+----------------------------------------------------------------
+
+overAllClasses
+  :: (Random a, Arbitrary a, Num a, Ord a, Show a, Testable t)
+  => (Orbit a -> t)
+  -> [TestTree]
+overAllClasses t =
+  [ testProperty "circular"   (\(CircularOrbit o) -> t o)
+  , testProperty "elliptic"   (\(EllipticOrbit o) -> t o)
+  , testProperty "parabolic"  (\(ParabolicOrbit o) -> t o)
+  , testProperty "hyperbolic" (\(HyperbolicOrbit o) -> t o)
+  ]

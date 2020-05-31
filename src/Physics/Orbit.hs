@@ -183,13 +183,14 @@ data PeriapsisSpecifier a = -- | The orbit is not circular
                                         -- angle of the periapsis relative to
                                         -- the reference direction in the
                                         -- orbital plane.
-                                        argumentOfPeriapsis :: !(Angle a) }
+                                        argumentOfPeriapsis :: !(Angle a)
+                                      }
                             -- | The orbit has an eccentricity of 0 so the
                             -- 'argumentOfPeriapsis' is indeterminate.
                           | Circular
   deriving (Show, Eq)
 
--- | What for the orbit's geometry takes. This is dependant only on the
+-- | What form the orbit's geometry takes. This is dependant only on the
 -- 'eccentricity', e >= 0, of the orbit.
 data Classification = -- | 0 <= e < 1
                       --
@@ -228,9 +229,9 @@ unsafeMapPeriapsisSpecifier f p = case p of
 -- Functions
 --------------------------------------------------------------------------------
 
--- | Return true is the orbit is valid and false if it is invalid. The behavior
--- of all the other functions in this module is undefined when given an invalid
--- orbit.
+-- | Determines if the orbital elements are valid (@e >= 0@ etc...). The
+-- behavior of all the other functions in this module is undefined when given
+-- an invalid orbit.
 isValid :: (Ord a, Num a) => Orbit a -> Bool
 isValid o = e >= 0 &&
             ((e == 0) `iff` (periapsisSpecifier o == Circular)) &&
@@ -242,7 +243,7 @@ isValid o = e >= 0 &&
     q = periapsis o
     μ = primaryGravitationalParameter o
 
--- | 'classify' is a funciton which returns the orbit's class.
+-- | What shape is the orbit
 classify :: (Num a, Ord a) => Orbit a -> Classification
 classify o
   | e < 1 = Elliptic
@@ -266,7 +267,7 @@ semiMajorAxis o =
 
 -- | Calculate the semi-minor axis, b, of the 'Orbit'. Like 'semiMajorAxis'
 -- @\'semiMinorAxis\' o@ is negative when @o@ is a hyperbolic orbit. In the
--- case of a parabolic orbit 'semiMinorAxis' returns 0m.
+-- case of a parabolic orbit 'semiMinorAxis' returns @0m@.
 semiMinorAxis :: (Floating a, Ord a) => Orbit a -> Distance a
 semiMinorAxis o =
   case classify o of
@@ -362,6 +363,14 @@ hyperbolicDepartureAngle o =
 hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap qNegate . hyperbolicDepartureAngle
 
+----------------------------------------------------------------
+-- ## Conversions between time and anomolies
+----------------------------------------------------------------
+
+---------
+-- To time
+---------
+
 -- | Calculate the time since periapse, t, when the body has the given
 -- <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>, M. M may be
 -- negative, indicating that the orbiting body has yet to reach periapse.
@@ -385,6 +394,10 @@ timeAtEccentricAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtEccentricAn
 -- orbiting body.
 timeAtTrueAnomaly :: (Real a, Floating a) => Orbit a -> Angle a -> Maybe (Time a)
 timeAtTrueAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtTrueAnomaly o
+
+---------
+-- To mean anomaly
+---------
 
 -- | Calculate the <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>,
 -- M, at the given time since periapse, t. t may be negative, indicating that
@@ -426,6 +439,10 @@ meanAnomalyAtTrueAnomaly o = case classify o of
   Elliptic -> meanAnomalyAtEccentricAnomaly o <=<
               eccentricAnomalyAtTrueAnomaly o
   _ -> error "TODO: meanAnomalyAtTrueAnomaly"
+
+---------
+-- To eccentric
+---------
 
 -- | Calculate the eccentric anomaly, E, of an elliptic orbit at time t.
 --
@@ -512,6 +529,11 @@ eccentricAnomalyAtTrueAnomaly o ν = case classify o of
                then (unsafeMapUnit fromInteger n |*| turn) |+| wrappedE
                else (unsafeMapUnit fromInteger (n+1) |*| turn) |-| wrappedE
 
+
+---------
+-- To true
+---------
+
 -- | Calculate the true anomaly, ν, of a body at time since periapse, t.
 trueAnomalyAtTime :: (Converge [a], RealFloat a)
                   => Orbit a -> Time a -> Maybe (Angle a)
@@ -540,7 +562,7 @@ trueAnomalyAtEccentricAnomaly o _E = case classify o of
                         _E `divMod'` turn
         e = eccentricity o # [si||]
         wrappedν = rad $ 2 * atan2 (sqrt (1 + e) * sin (wrappedE / 2))
-                                        (sqrt (1 - e) * cos (wrappedE / 2))
+                                   (sqrt (1 - e) * cos (wrappedE / 2))
         ν = turn |*| n |+| wrappedν
 
 ----------------------------------------------------------------

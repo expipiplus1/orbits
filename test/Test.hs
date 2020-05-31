@@ -330,6 +330,9 @@ anomalyTimeConversionTests anomalyToTime fromName =
 (.:) :: (a -> b) -> (c -> d -> a) -> c -> d -> b
 f .: g = \x y -> f (g x y)
 
+(~>) :: Bool -> Bool -> Bool
+a ~> b = not a || b
+
 test_conversions :: [TestTree]
 test_conversions = [ conversionToTime
                    , conversionToMeanAnomaly
@@ -434,3 +437,12 @@ main = do
   let is = includingOptions [slowTestQCRatio] : defaultIngredients
   defaultMainWithIngredients is $(testGroupGenerator)
 
+----------------------------------------------------------------
+-- Utils
+----------------------------------------------------------------
+
+qCos :: Floating a => Angle a -> Unitless a
+qCos θ = quantity $ cos (θ # [si|rad|])
+
+qSin :: Floating a => Angle a -> Unitless a
+qSin θ = quantity $ sin (θ # [si|rad|])
