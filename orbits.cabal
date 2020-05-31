@@ -42,7 +42,7 @@ library
       Data.Metrology.Extra
   hs-source-dirs:
       src
-  default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators
   ghc-options: -Wall -O2
   build-depends:
       ad >=4.3.2
@@ -59,7 +59,7 @@ test-suite doctests
       
   hs-source-dirs:
       test/doctest
-  default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators
   ghc-options: -Wall
   build-depends:
       base
@@ -71,18 +71,15 @@ test-suite test
   main-is: Test.hs
   other-modules:
       Data.CReal.QuickCheck
+      Data.Metrology.Extra
       Data.Metrology.QuickCheck
       Physics.Orbit.QuickCheck
       Test.QuickCheck.Extra
       WrappedAngle
-      Data.Constants.Mechanics.Extra
-      Data.Metrology.Extra
-      Physics.Orbit
       Paths_orbits
   hs-source-dirs:
       test
-      src
-  default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators
   ghc-options: -Wall -threaded
   build-depends:
       QuickCheck

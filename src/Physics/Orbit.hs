@@ -1,10 +1,3 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 -- | Types and functions for dealing with Kepler orbits.
 module Physics.Orbit
   ( -- * The Orbit data type and dependencies

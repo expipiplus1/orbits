@@ -28,9 +28,13 @@ ghc-options: -Wall
 
 default-extensions:
   DataKinds
+  FlexibleContexts
   GeneralizedNewtypeDeriving
   QuasiQuotes
   ScopedTypeVariables
+  TemplateHaskell
+  TypeApplications
+  TypeFamilies
   TypeOperators
 
 tests:
@@ -38,7 +42,6 @@ tests:
     main: Test.hs
     source-dirs:
       - test
-      - src
     ghc-options:
       - -threaded
     dependencies:
