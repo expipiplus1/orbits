@@ -26,7 +26,14 @@ Nomenclature
 | t      | Time since periapse              |                                |
 | M      | Mean anomaly                     |                                |
 | E      | Eccentric anomaly                | Only for elliptic orbits       |
+| H      | Hyperbolic anomaly               | Only for hyperbolic orbits     |
 | ν      | True anomaly                     |                                |
+| h      | Specific angular momentum        |                                |
+| ε      | Specific orbital energy          |                                |
+| εp     | Specific potential energy        |                                |
+| εk     | Specific kinetic energy          |                                |
+| v      | Orbital speed or velocity        |                                |
+| r      | The radius to the orbiting body  |                                |
 
 
 Note that in the Haskell source uppercase symbols such as Ω and M are written
