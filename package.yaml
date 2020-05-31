@@ -22,6 +22,7 @@ library:
   - exact-real >= 0.12
   - units
   - units-defs >= 2.2
+  - linear
   ghc-options: -O2
 
 ghc-options: -Wall
