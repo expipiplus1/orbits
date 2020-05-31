@@ -1,4 +1,4 @@
-{ pkgs ? import <nixpkgs> { }, compiler ? null, hoogle ? true }:
+{ pkgs ? import <nixpkgs> { }, compiler ? "ghc882", hoogle ? true }:
 
 let
   src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
