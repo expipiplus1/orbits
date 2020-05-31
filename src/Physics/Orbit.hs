@@ -63,11 +63,16 @@ import           Data.Bifunctor                 ( bimap
 import           Data.CReal.Converge            ( Converge
                                                 , convergeErr
                                                 )
+import           Data.Coerce
 import           Data.Constants.Mechanics.Extra
+import           Data.Maybe                     ( fromJust )
 import           Data.Metrology
 import           Data.Metrology.Extra
 import           Data.Metrology.Show            ( )
-import           Data.Metrology.Unsafe          ( UnsafeQu(..) )
+import           Data.Metrology.TH
+import           Data.Metrology.Unsafe          ( Qu(..)
+                                                , UnsafeQu(..)
+                                                )
 import           Data.Units.SI.Parser
 import           Numeric.AD                     ( Mode
                                                 , Scalar
@@ -82,6 +87,10 @@ import           Numeric.AD.Internal.Identity   ( Id(..) )
 -- Types
 --------------------------------------------------------------------------------
 
+declareDimension "PlaneAngleHyperbolic"
+declareCanonicalUnit "RadianHyperbolic" [t| PlaneAngleHyperbolic |] (Just "rdh")
+type instance DefaultUnitOfDim PlaneAngleHyperbolic = RadianHyperbolic
+
 type Quantity u = MkQu_ULN u 'DefaultLCSU
 -- | A measure in seconds.
 type Time     = Quantity [si|s|]
@@ -93,6 +102,8 @@ type Speed    = Quantity [si| m s^-1 |]
 type Mass     = Quantity [si| kg |]
 -- | A measure in radians.
 type Angle    = Quantity [si| rad |]
+-- | A measure in radians (hyperbolic)
+type AngleH   = Quantity RadianHyperbolic
 -- | A unitless measure.
 type Unitless = Quantity [si||]
 
