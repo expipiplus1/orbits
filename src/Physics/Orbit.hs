@@ -26,11 +26,13 @@ module Physics.Orbit
     -- *** To time since periapse
   , timeAtMeanAnomaly
   , timeAtEccentricAnomaly
+  , timeAtHyperbolicAnomaly
   , timeAtTrueAnomaly
 
     -- *** To mean anomaly
   , meanAnomalyAtTime
   , meanAnomalyAtEccentricAnomaly
+  , meanAnomalyAtHyperbolicAnomaly
   , meanAnomalyAtTrueAnomaly
 
     -- *** To eccentric anomaly
@@ -39,17 +41,39 @@ module Physics.Orbit
   , eccentricAnomalyAtMeanAnomalyFloat
   , eccentricAnomalyAtTrueAnomaly
 
+    -- *** To hyperbolic anomaly
+  , hyperbolicAnomalyAtTime
+  , hyperbolicAnomalyAtMeanAnomaly
+  , hyperbolicAnomalyAtMeanAnomalyDouble
+  , hyperbolicAnomalyAtTrueAnomaly
+
     -- *** To true anomaly
   , trueAnomalyAtTime
   , trueAnomalyAtMeanAnomaly
   , trueAnomalyAtEccentricAnomaly
+  , trueAnomalyAtHyperbolicAnomaly
+
+    -- *** Properties of orbits
+  , specificAngularMomentum
+  , specificOrbitalEnergy
+  , specificPotentialEnergyAtTrueAnomaly
+  , specificKineticEnergyAtTrueAnomaly
+  , speedAtTrueAnomaly
+  , radiusAtTrueAnomaly
+
+    -- *** Other utilities
+  , escapeVelocityAtDistance
 
     -- * Unit synonyms
+  , Quantity
   , Time
   , Distance
   , Speed
   , Mass
   , Angle
+  , AngleH
+  , RadianHyperbolic(..)
+  , PlaneAngleHyperbolic(..)
   , Unitless
 
     -- * Reexported from 'Data.CReal'
@@ -82,6 +106,7 @@ import           Numeric.AD.Halley              ( findZero
                                                 , findZeroNoEq
                                                 )
 import           Numeric.AD.Internal.Identity   ( Id(..) )
+import qualified Numeric.AD.Newton.Double      as Newton
 
 --------------------------------------------------------------------------------
 -- Types
@@ -390,10 +415,32 @@ timeAtMeanAnomaly o _M = _M |/| n
 timeAtEccentricAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (Time a)
 timeAtEccentricAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtEccentricAnomaly o
 
+-- | Calculate the time since periapse, t, of a hyperbolic orbit when at
+-- hyperbolic anomaly H.
+--
+-- Returns Nothing if given an elliptic or parabolic orbit.
+timeAtHyperbolicAnomaly
+  :: (Floating a, Ord a) => Orbit a -> AngleH a -> Maybe (Time a)
+timeAtHyperbolicAnomaly o =
+  fmap (timeAtMeanAnomaly o) . meanAnomalyAtHyperbolicAnomaly o
+
 -- | Calculate the time since periapse given the true anomaly, ν, of an
 -- orbiting body.
-timeAtTrueAnomaly :: (Real a, Floating a) => Orbit a -> Angle a -> Maybe (Time a)
-timeAtTrueAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtTrueAnomaly o
+--
+-- Returns 'Nothing' if the body never passed through the specified true
+-- anomaly.
+timeAtTrueAnomaly
+  :: (Real a, Floating a) => Orbit a -> Angle a -> Maybe (Time a)
+timeAtTrueAnomaly o ν = case classify o of
+  c | Just d <- hyperbolicDepartureAngle o, qAbs ν |>| d -> Nothing
+  Parabolic ->
+    let _D = qTan (ν |/| 2)
+        t  = 0.5 |*| qSqrt (qCube l |/| μ) |*| (_D |+| (qCube _D |/| 3))
+    in  Just t
+  _ -> fmap (timeAtMeanAnomaly o) . meanAnomalyAtTrueAnomaly o $ ν
+ where
+  μ = primaryGravitationalParameter o
+  l = semiLatusRectum o
 
 ---------
 -- To mean anomaly
@@ -426,19 +473,35 @@ meanAnomalyAtEccentricAnomaly o _E = case classify o of
         untypedE = delRad _E
         _M = addRad (untypedE |-| e |*| sin untypedE)
 
+-- | Calculate the mean anomaly, M, of a hyperbolic orbit when at hyperbolic
+-- anomaly H
+meanAnomalyAtHyperbolicAnomaly
+  :: (Floating a, Ord a) => Orbit a -> AngleH a -> Maybe (Angle a)
+meanAnomalyAtHyperbolicAnomaly o _H = case classify o of
+  Hyperbolic -> Just _M
+  _          -> Nothing
+ where
+  e  = eccentricity o
+  _M = addRad $ e * qSinh _H - (quantity (_H # RadianHyperbolic))
+
 -- | Calculate the mean anomaly, M, of an orbiting body when at the given true
 -- anomaly, ν.
 --
 -- The number of orbits represented by the anomalies is preserved;
 -- i.e. M `div` 2π = ν `div` 2π
 --
--- Currently only implemented for elliptic orbits.
+-- Returns 'Nothing' for parabolic orbits.
+--
+-- Returns 'Nothing' when the trajectory is not defined for the given true
+-- anomaly.
 meanAnomalyAtTrueAnomaly :: (Real a, Floating a)
                          => Orbit a -> Angle a -> Maybe (Angle a)
-meanAnomalyAtTrueAnomaly o = case classify o of
+meanAnomalyAtTrueAnomaly o ν = case classify o of
+  Parabolic -> Nothing
   Elliptic -> meanAnomalyAtEccentricAnomaly o <=<
-              eccentricAnomalyAtTrueAnomaly o
-  _ -> error "TODO: meanAnomalyAtTrueAnomaly"
+              eccentricAnomalyAtTrueAnomaly o $ ν
+  Hyperbolic -> meanAnomalyAtHyperbolicAnomaly o <=<
+                hyperbolicAnomalyAtTrueAnomaly o $ ν
 
 ---------
 -- To eccentric
@@ -529,22 +592,108 @@ eccentricAnomalyAtTrueAnomaly o ν = case classify o of
                then (unsafeMapUnit fromInteger n |*| turn) |+| wrappedE
                else (unsafeMapUnit fromInteger (n+1) |*| turn) |-| wrappedE
 
+---------
+-- To hyperbolic
+---------
+
+hyperbolicAnomalyAtTime
+  :: forall a
+   . (Converge [a], RealFloat a)
+  => Orbit a
+  -> Time a
+  -> Maybe (AngleH a)
+hyperbolicAnomalyAtTime o =
+  hyperbolicAnomalyAtMeanAnomaly o . meanAnomalyAtTime o
+
+hyperbolicAnomalyAtMeanAnomaly
+  :: forall a
+   . (Converge [a], RealFloat a)
+  => Orbit a
+  -> Angle a
+  -> Maybe (AngleH a)
+hyperbolicAnomalyAtMeanAnomaly o _M = case classify o of
+  Hyperbolic -> _H
+  _          -> Nothing
+ where
+  e                       = eccentricity o # [si||]
+  _M'                     = _M # [si|rad|]
+  _MDouble                = realToFrac _M'
+  Just initialGuessDouble = hyperbolicAnomalyAtMeanAnomalyDouble
+    (unsafeMapOrbit realToFrac o)
+    (rad _MDouble)
+  initialGuess = realToFrac . (# RadianHyperbolic) $ initialGuessDouble
+  err :: (Mode b, Floating b, Scalar b ~ a) => b -> b
+  err _H = auto _M' - (auto e * sinh _H - _H)
+  _H = fmap rdh . convergeErr (runId . abs . err . Id) $ findZeroNoEq
+    err
+    initialGuess
+
+-- | Calculate the hyperbolic anomaly, H, at a given mean anomaly. Unline
+-- 'eccentricAnomalyAtMeanAnomalyFloat' this uses double precision floats to
+-- help avoid overflowing.
+hyperbolicAnomalyAtMeanAnomalyDouble
+  :: Orbit Double -> Angle Double -> Maybe (AngleH Double)
+hyperbolicAnomalyAtMeanAnomalyDouble o _M = case classify o of
+  Hyperbolic -> case _H of
+    -- If you hit this, a better initial guess would probably help
+    Qu x | isNaN x -> error "NaN while trying to find hyperbolic anomaly"
+    _              -> Just _H
+  _ -> Nothing
+ where
+  -- Perhaps use something like https://www.researchgate.net/publication/226007277_A_Method_Solving_Kepler%27s_Equation_for_Hyperbolic_Case
+  e            = eccentricity o # [si||]
+  _M'          = _M # [si|rad|]
+  -- TODO: A better guess here
+  initialGuess = _M'
+  _H           = rdh . last . take 200 $ Newton.findZero
+    (\_H -> auto _M' - (auto e * sinh _H - _H))
+    initialGuess
+
+-- | Returns the hyperbolic anomaly, H, for an orbit at true anomaly ν.
+--
+-- Returns 'Nothing' when given an 'Elliptic' or 'Parabolic' orbit, or a true
+-- anomaly out of the range of the hyperbolic orbit.
+hyperbolicAnomalyAtTrueAnomaly
+  :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (AngleH a)
+hyperbolicAnomalyAtTrueAnomaly o ν = case classify o of
+  _ | Just d <- hyperbolicDepartureAngle o, qAbs ν |>| d -> Nothing
+  Hyperbolic -> Just _H
+  _          -> Nothing
+ where
+  e     = eccentricity o
+  coshH = (qCos ν + e) / (1 + e * qCos ν)
+  sign  = signum (ν # [si|rad|])
+  _H    = sign *| qArcCosh coshH
 
 ---------
 -- To true
 ---------
 
 -- | Calculate the true anomaly, ν, of a body at time since periapse, t.
-trueAnomalyAtTime :: (Converge [a], RealFloat a)
-                  => Orbit a -> Time a -> Maybe (Angle a)
-trueAnomalyAtTime o = trueAnomalyAtMeanAnomaly o . meanAnomalyAtTime o
+trueAnomalyAtTime
+  :: forall a . (Converge [a], RealFloat a) => Orbit a -> Time a -> Angle a
+trueAnomalyAtTime o t = case classify o of
+  Elliptic   -> trueAnomalyAtMeanAnomaly o _M
+  Hyperbolic -> trueAnomalyAtMeanAnomaly o _M
+  Parabolic ->
+    let _A = (3 |/| 2) |*| qSqrt (μ |/| (2 |*| qCube (l |/| 2))) |*| t
+        _B = qCubeRoot (_A |+| qSqrt (qSq _A |+| 1))
+    in  2 |*| qArcTan (_B - recip _B)
+ where
+  μ  = primaryGravitationalParameter o
+  l  = semiLatusRectum o
+  _M = meanAnomalyAtTime o t
 
 -- | Calculate the true anomaly, ν, of an orbiting body when it has the given
 -- mean anomaly, _M.
-trueAnomalyAtMeanAnomaly :: (Converge [a], RealFloat a)
-                         => Orbit a -> Angle a -> Maybe (Angle a)
-trueAnomalyAtMeanAnomaly o = trueAnomalyAtEccentricAnomaly o <=<
-                             eccentricAnomalyAtMeanAnomaly o
+trueAnomalyAtMeanAnomaly
+  :: (Converge [a], RealFloat a) => Orbit a -> Angle a -> Angle a
+trueAnomalyAtMeanAnomaly o _M = case classify o of
+  Elliptic -> fromJust
+    (trueAnomalyAtEccentricAnomaly o <=< eccentricAnomalyAtMeanAnomaly o $ _M)
+  Hyperbolic -> fromJust
+    (trueAnomalyAtHyperbolicAnomaly o <=< hyperbolicAnomalyAtMeanAnomaly o $ _M)
+  _ -> error "TODO: true from mean"
 
 -- | Calculate the true anomaly, ν, of an orbiting body when it has the given
 -- eccentric anomaly, _E.
@@ -565,9 +714,116 @@ trueAnomalyAtEccentricAnomaly o _E = case classify o of
                                    (sqrt (1 - e) * cos (wrappedE / 2))
         ν = turn |*| n |+| wrappedν
 
+trueAnomalyAtHyperbolicAnomaly
+  :: (Ord a, Floating a) => Orbit a -> AngleH a -> Maybe (Angle a)
+trueAnomalyAtHyperbolicAnomaly o _H = case classify o of
+  Hyperbolic -> Just ν
+  _          -> Nothing
+ where
+  e         = eccentricity o
+  sign      = signum (_H # RadianHyperbolic)
+  tanνOver2 = sqrt ((e + 1) / (e - 1)) * qTanh (_H |/| 2)
+  ν         = 2 |*| qArcTan tanνOver2
+
+----------------------------------------------------------------
+-- Other orbital properties
+----------------------------------------------------------------
+
+-- | The distance, r, from the primary body to the orbiting body at a particular
+-- true anomaly.
+radiusAtTrueAnomaly :: (Ord a, Floating a) => Orbit a -> Angle a -> Distance a
+radiusAtTrueAnomaly o trueAnomaly = case semiMajorAxis o of
+  Just a  -> l |/| (1 |+| e |*| qCos ν)
+  Nothing -> (qSq h |/| μ) |*| (1 |/| (1 |+| qCos ν))
+ where
+  h = specificAngularMomentum o
+  e = eccentricity o
+  ν = trueAnomaly
+  μ = primaryGravitationalParameter o
+  l = semiLatusRectum o
+
+-- | What is the speed, v, of a body at a particular true anomaly
+speedAtTrueAnomaly :: (Ord a, Floating a) => Orbit a -> Angle a -> Speed a
+speedAtTrueAnomaly o trueAnomaly = case semiMajorAxis o of
+  Nothing -> qSqrt (μ |*| 2 |/| r)
+  Just a  -> qSqrt (μ |*| (2 |/| r |-| 1 |/| a))
+ where
+  ν = trueAnomaly
+  μ = primaryGravitationalParameter o
+  r = radiusAtTrueAnomaly o ν
+
+-- | Specific angular momentum, h, is the angular momentum per unit mass
+specificAngularMomentum :: Floating a => Orbit a -> Quantity [si|m^2 s^-1|] a
+specificAngularMomentum o = qSqrt (μ |*| l)
+  where
+    μ = primaryGravitationalParameter o
+    l = semiLatusRectum o
+
+-- | Specific orbital energy, ε, is the orbital energy per unit mass
+specificOrbitalEnergy
+  :: (Ord a, Floating a) => Orbit a -> Quantity [si|J / kg|] a
+specificOrbitalEnergy o = case semiMajorAxis o of
+  Just a  -> qNegate (μ |/| (2 |*| a))
+  Nothing -> zero
+  where μ = primaryGravitationalParameter o
+
+-- | Specific potential energy, εp, is the potential energy per unit mass at a
+-- particular true anomaly
+specificPotentialEnergyAtTrueAnomaly
+  :: (Ord a, Floating a) => Orbit a -> Angle a -> Quantity [si|J / kg|] a
+specificPotentialEnergyAtTrueAnomaly o ν = qNegate (μ |/| r)
+ where
+  r = radiusAtTrueAnomaly o ν
+  μ = primaryGravitationalParameter o
+
+-- | Specific kinetic energy, εk, is the kinetic energy per unit mass at a
+-- particular true anomaly
+specificKineticEnergyAtTrueAnomaly
+  :: (Ord a, Floating a) => Orbit a -> Angle a -> Quantity [si|J / kg|] a
+specificKineticEnergyAtTrueAnomaly o ν = qSq (speedAtTrueAnomaly o ν) |/| 2
+
 ----------------------------------------------------------------
 -- Utils
 ----------------------------------------------------------------
 
+-- | The escape velocity for a primary with specified gravitational parameter
+-- at a particular distance.
+escapeVelocityAtDistance
+  :: (Floating a) => Quantity [si| m^3 s^-2 |] a -> Distance a -> Speed a
+escapeVelocityAtDistance μ r = qSqrt (2 |*| μ |/| r)
+
+----------------------------------------------------------------
+-- Internal Utils
+----------------------------------------------------------------
+
 rad :: Fractional a => a -> Angle a
 rad = (% [si|rad|])
+
+rdh :: Fractional a => a -> AngleH a
+rdh = (% RadianHyperbolic)
+
+qCos :: Floating a => Angle a -> Unitless a
+qCos θ = quantity $ cos (θ # [si|rad|])
+
+qSin :: Floating a => Angle a -> Unitless a
+qSin θ = quantity $ sin (θ # [si|rad|])
+
+qTan :: Floating a => Angle a -> Unitless a
+qTan θ = quantity $ tan (θ # [si|rad|])
+
+qArcTan :: Floating a => Unitless a -> Angle a
+qArcTan = rad . atan . (# [si||])
+
+qRecip x = 1 |/| x
+
+qTanh :: Floating a => AngleH a -> Unitless a
+qTanh = quantity . tanh . (# RadianHyperbolic)
+
+qSinh :: Floating a => AngleH a -> Unitless a
+qSinh = quantity . sinh . (# RadianHyperbolic)
+
+qArcCosh :: Floating a => Unitless a -> AngleH a
+qArcCosh = rdh . acosh . (# [si||])
+
+qAbs :: forall a l u . Num a => Qu u l a -> Qu u l a
+qAbs = coerce (abs @a)

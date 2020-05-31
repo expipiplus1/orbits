@@ -14,6 +14,7 @@ import           Data.CReal                     ( CReal )
 import           Data.CReal.QuickCheck          ( )
 import           Data.Coerce                    ( coerce )
 import           Data.Constants.Mechanics.Extra
+import           Data.Maybe
 import           Data.Maybe                     ( fromJust )
 import           Data.Metrology          hiding ( (%) )
 import           Data.Metrology.Extra
@@ -24,8 +25,12 @@ import           Data.Units.SI.Parser
 import           Numeric                        ( readFloat )
 import           Physics.Orbit
 import           Physics.Orbit.QuickCheck
+import           Test.QuickCheck                ( Small(..) )
 import           Test.QuickCheck.Arbitrary      ( Arbitrary )
-import           Test.QuickCheck.Checkers       ( inverse )
+import           Test.QuickCheck.Checkers       ( inverse
+                                                , inverseL
+                                                )
+import           Test.QuickCheck.Extra          ( )
 import           Test.Tasty                     ( TestTree
                                                 , adjustOption
                                                 , askOption
@@ -350,6 +355,9 @@ test_conversions = [ conversionToTime
       , testGroup "from true anomaly"
                   (anomalyTimeConversionTests (fromJust .: timeAtTrueAnomaly)
                                               "true anomaly")
+      , testProperty "from true anomaly out of bounds parabolic"
+        (\ν (ParabolicOrbitF o) ->
+          validTrueAnomaly o ν ~> isJust (timeAtTrueAnomaly o ν))
       ]
 
     conversionToMeanAnomaly = let s = "mean anomaly" in testGroup ("conversion to " ++ s)
@@ -380,9 +388,9 @@ test_conversions = [ conversionToTime
 
     conversionToTrueAnomaly = let s = "true anomaly" in testGroup ("conversion to " ++ s)
       [ testGroup "from time"
-                  (timeAnomalyConversionTests (fromJust .: trueAnomalyAtTime) s)
+                  (timeAnomalyConversionTests trueAnomalyAtTime s)
       , testGroup "from mean anomaly"
-                  (anomalyConversionTests (fromJust .: trueAnomalyAtMeanAnomaly)
+                  (anomalyConversionTests trueAnomalyAtMeanAnomaly
                                           "mean anomaly"
                                           s)
       , testGroup "from eccentric anomaly"
@@ -401,26 +409,61 @@ test_conversions = [ conversionToTime
             inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
                     (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
 
+      , slowTest $ testProperty "mean hyperbolic inverse"
+          (\(HyperbolicOrbit o) ->
+            inverseL (fromJust . meanAnomalyAtHyperbolicAnomaly @Exact o)
+                     (fromJust . hyperbolicAnomalyAtMeanAnomaly o))
+
       , slowTest $ testProperty "mean true inverse"
           (\(EllipticOrbit o) ->
             inverse (fromJust . meanAnomalyAtTrueAnomaly (o :: Orbit Exact))
-                    (fromJust . trueAnomalyAtMeanAnomaly o))
+                    (trueAnomalyAtMeanAnomaly o))
 
-      , slowTest $ testProperty "time true inverse"
+      , slowTest $ testProperty "time true inverse elliptic"
           (\(EllipticOrbit o) ->
             inverse (fromJust . timeAtTrueAnomaly (o :: Orbit Exact))
-                    (fromJust . trueAnomalyAtTime o))
+                    (trueAnomalyAtTime o))
+
+      , slowTest $ testProperty "true time inverse parabolic"
+          (\(ParabolicOrbit o) ->
+            -- Use inverseL because there doesn't exist a time for every true
+            -- anomaly
+            inverseL (fromJust . timeAtTrueAnomaly (o :: Orbit Exact))
+                     (trueAnomalyAtTime o)
+                    )
 
       , testProperty "time eccentric inverse"
           (\(EllipticOrbit o) ->
             inverse (fromJust . timeAtEccentricAnomaly (o :: Orbit Exact))
                     (fromJust . eccentricAnomalyAtTime o))
 
+      -- , slowTest $ testProperty "time hyperbolic inverse"
+      --     (\(HyperbolicOrbit o) ->
+      --       inverseL (fromJust . timeAtHyperbolicAnomaly @Exact o)
+      --                (fromJust . hyperbolicAnomalyAtTime o))
+
       , testProperty "eccentric true inverse"
           (\(EllipticOrbit o) ->
             inverse (coerce (fromJust . eccentricAnomalyAtTrueAnomaly (o:: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
                     (fromJust . coerce (trueAnomalyAtEccentricAnomaly o)))
+
+      , testProperty "hyperbolic true inverse"
+          (\(HyperbolicOrbit o) ->
+            inverseL (fromJust . hyperbolicAnomalyAtTrueAnomaly o)
+                     (fromJust . trueAnomalyAtHyperbolicAnomaly @Exact o))
       ]
+
+test_anomalies :: [TestTree]
+test_anomalies =
+  [ slowTest $ testProperty
+      "hyperbolic true"
+      (\(HyperbolicOrbit o) _M ->
+        let Just _H = hyperbolicAnomalyAtMeanAnomaly @Exact o _M
+            ν       = trueAnomalyAtMeanAnomaly o _M
+            e       = eccentricity o
+        in  qCosh _H === (qCos ν + e) / (1 + e * qCos ν)
+      )
+  ]
 
 -- TODO: Put parabolic and hyperbolic tests here
 test_areal :: [TestTree]
@@ -431,6 +474,111 @@ test_areal = [ testProperty "elliptic areal area"
                                             Just p = period o
                                         in area === p |*| arealVelocity o)
              ]
+
+test_orbitalEnergy :: [TestTree]
+test_orbitalEnergy =
+  [ testProperty "negative elliptical energy"
+                 (\(EllipticOrbitF o) -> specificOrbitalEnergy o < zero)
+  , testProperty "zero parabolic energy"
+                 (\(ParabolicOrbitF o) -> specificOrbitalEnergy o === zero)
+  , testProperty "positive hyperbolic energy"
+                 (\(HyperbolicOrbitF o) -> specificOrbitalEnergy o > zero)
+  , testGroup
+    "potential + kinetic"
+    (overAllClasses
+      (\o ν ->
+        specificOrbitalEnergy @Exact o
+          === specificPotentialEnergyAtTrueAnomaly o ν
+          |+| specificKineticEnergyAtTrueAnomaly o ν
+      )
+    )
+  ]
+
+test_radius :: [TestTree]
+test_radius =
+  [ testGroup
+    "periapsis when ν = 0"
+    (overAllClasses (\o -> radiusAtTrueAnomaly @Exact o zero === periapsis o))
+  , testProperty
+    "constant on circular"
+    (\(CircularOrbitF o) ν -> radiusAtTrueAnomaly o ν === periapsis o)
+  , testProperty
+    "apoapsis when ν == π for elliptic"
+    (\(EllipticOrbit o) ->
+      radiusAtTrueAnomaly @Exact o halfTurn === fromJust (apoapsis o)
+    )
+  , testGroup
+    "l when ν == π/2"
+    (overAllClasses
+      (\o -> radiusAtTrueAnomaly @Exact o (halfTurn |*| (-0.5))
+        === semiLatusRectum o
+      )
+    )
+  , testGroup
+    "l when ν == -π/2"
+    (overAllClasses
+      (\o -> radiusAtTrueAnomaly @Exact o (halfTurn |*| (-0.5))
+        === semiLatusRectum o
+      )
+    )
+  , testProperty
+    "from E"
+    (\(EllipticOrbit o) ν ->
+      let Just _E = eccentricAnomalyAtTrueAnomaly @Exact o ν
+      in  radiusAtTrueAnomaly o ν
+            === fromJust (semiMajorAxis o)
+            |*| (1 - eccentricity o |*| qCos _E)
+    )
+  ]
+
+test_speed :: [TestTree]
+test_speed =
+  [ testProperty
+    "constant on circular"
+    (\(CircularOrbitF o) ν ν' ->
+      speedAtTrueAnomaly o ν === speedAtTrueAnomaly o ν'
+    )
+  , testProperty
+    "zero at apex"
+    (\(ParabolicOrbitF o) -> speedAtTrueAnomaly o halfTurn === zero)
+  , testProperty
+    "below escape velocity for elliptical"
+    (\(EllipticOrbitF o) ν -> speedAtTrueAnomaly o ν < escapeVelocityAtDistance
+      (primaryGravitationalParameter o)
+      (radiusAtTrueAnomaly o ν)
+    )
+  , testProperty
+    "escape velocity for parabolic"
+    (\(ParabolicOrbitF o) ν ->
+      speedAtTrueAnomaly o ν === escapeVelocityAtDistance
+        (primaryGravitationalParameter o)
+        (radiusAtTrueAnomaly o ν)
+    )
+  , testProperty
+    "above escape velocity for hyperbolic"
+    (\(HyperbolicOrbitF o) _M ->
+      let ν = trueAnomalyAtMeanAnomaly o _M
+      in  speedAtTrueAnomaly o ν > escapeVelocityAtDistance
+            (primaryGravitationalParameter o)
+            (radiusAtTrueAnomaly o ν)
+    )
+  ]
+
+test_angularMomentum :: [TestTree]
+test_angularMomentum =
+  [ testProperty "negative elliptical energy"
+                 (\(EllipticOrbitF o) -> specificOrbitalEnergy o < zero)
+  , testProperty "zero parabolic energy"
+                 (\(ParabolicOrbitF o) -> specificOrbitalEnergy o === zero)
+  , testProperty "positive hyperbolic energy"
+                 (\(HyperbolicOrbitF o) -> specificOrbitalEnergy o > zero)
+  ]
+
+validTrueAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Bool
+validTrueAnomaly o ν = case hyperbolicDepartureAngle o of
+  Nothing -> True
+  Just d  -> qAbs ν < d
+  where qAbs x = if x < zero then qNegate x else x
 
 main :: IO ()
 main = do
@@ -446,3 +594,6 @@ qCos θ = quantity $ cos (θ # [si|rad|])
 
 qSin :: Floating a => Angle a -> Unitless a
 qSin θ = quantity $ sin (θ # [si|rad|])
+
+qCosh :: Floating a => AngleH a -> Unitless a
+qCosh = quantity . cosh . (# RadianHyperbolic)
