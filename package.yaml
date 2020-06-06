@@ -38,6 +38,7 @@ default-extensions:
   TypeApplications
   TypeFamilies
   TypeOperators
+  ViewPatterns
 
 tests:
   test:

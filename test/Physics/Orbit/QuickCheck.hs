@@ -58,6 +58,8 @@ newtype HyperbolicOrbit a = HyperbolicOrbit {getHyperbolicOrbit :: Orbit a}
   deriving(Show, Eq)
 
 -- | An orbit where all angles are in [0..2π) or [0..π)
+--
+-- Also not a weird orbit like circular or non inclined
 newtype CanonicalOrbit a = CanonicalOrbit {getCanonicalOrbit :: Orbit a}
   deriving(Show, Eq)
 
@@ -131,15 +133,15 @@ instance (Floating a, Real a, Random a, Arbitrary a) => Arbitrary (CanonicalOrbi
   arbitrary = do
     PositiveQuantity eccentricity <- arbitrary
     PositiveQuantity periapsis    <- arbitrary
-    inclinationSpecifier          <- arbitrary <&> \case
-      NonInclined   -> NonInclined
-      Inclined _Ω i -> Inclined (_Ω `mod'` turn) (i `mod'` (halfTurn |/| 2))
-    periapsisSpecifier <- arbitrary <&> \case
-      Circular    -> Circular
-      Eccentric ω -> Eccentric (ω `mod'` turn)
+    PositiveQuantity _Ω           <- arbitrary
+    PositiveQuantity i            <- arbitrary
+    let inclinationSpecifier =
+          Inclined (_Ω `mod'` turn) (i `mod'` (halfTurn |/| 2))
+    ω <- arbitrary
+    let periapsisSpecifier = Eccentric (ω `mod'` turn)
     PositiveQuantity primaryGravitationalParameter <- arbitrary
     pure . CanonicalOrbit $ Orbit { .. }
-  shrink (CanonicalOrbit o) = CanonicalOrbit <$> shrinkOrbit o
+  -- shrink (CanonicalOrbit o) = CanonicalOrbit <$> shrinkOrbit o
 
 instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
   arbitrary = oneof [pure NonInclined, Inclined <$> arbitrary <*> arbitrary]

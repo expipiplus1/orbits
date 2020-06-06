@@ -4,7 +4,7 @@ cabal-version: 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4d0db505349e173a22bfd9c9ffc3f1950b764e30a7d7515b35323526a05afdb4
+-- hash: ce043bffd83b1b5f25190fda481d4e54eec518530f2c96d5482c0e829c115d63
 
 name:           orbits
 version:        0.3
@@ -45,7 +45,7 @@ library
       Data.Metrology.Extra
   hs-source-dirs:
       src
-  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators ViewPatterns
   ghc-options: -Wall -O2
   build-depends:
       ad >=4.3.2
@@ -64,7 +64,7 @@ test-suite doctests
       
   hs-source-dirs:
       test/doctest
-  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators ViewPatterns
   ghc-options: -Wall -O2
   build-depends:
       base
@@ -86,7 +86,7 @@ test-suite test
       Paths_orbits
   hs-source-dirs:
       test
-  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators ViewPatterns
   ghc-options: -Wall -O2 -threaded
   build-depends:
       QuickCheck

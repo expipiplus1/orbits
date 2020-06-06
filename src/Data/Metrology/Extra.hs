@@ -92,9 +92,21 @@ qCross (V3 a b c) (V3 d e f) =
 qNorm :: forall u l a . Floating a => V3 (Qu u l a) -> Qu u l a
 qNorm = coerce (norm @V3 @a)
 
+-- qNormalize
+--   :: forall u l a . (Floating a, Epsilon a) => V3 (Qu u l a) -> V3 (Qu '[] l a)
+-- qNormalize = coerce (normalize @a @V3)
 qNormalize
-  :: forall u l a . (Floating a, Epsilon a) => V3 (Qu u l a) -> V3 (Qu u l a)
-qNormalize = coerce (normalize @a @V3)
+  :: Floating n
+  => V3 (Qu b l n)
+  -> V3
+       ( Qu
+           ( Normalize
+               (Normalize ('[] @- b) @@+ Reorder b (Normalize ('[] @- b)))
+           )
+           l
+           n
+       )
+qNormalize x = (qRecip (qNorm x) |*|) <$> x
 
 qDot
   :: forall u v l a. Num a

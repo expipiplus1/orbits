@@ -3,6 +3,7 @@ module Test.StateVectors where
 import           Control.Lens.Operators         ( (^.) )
 import           Data.CReal                     ( CReal )
 import           Data.CReal.QuickCheck          ( )
+import           Data.Constants.Mechanics.Extra
 import           Data.Metrology
 import           Data.Metrology.Extra
 import           Data.Metrology.QuickCheck
@@ -19,8 +20,6 @@ import           Test.Tasty.TH                  ( testGroupGenerator )
 import           Physics.Orbit
 import           Physics.Orbit.QuickCheck
 import           Physics.Orbit.StateVectors
-
-import           Debug.Trace
 
 -- | The type used for tests which require exact arithmetic. They are compared
 -- at a resolution of 2^16
@@ -44,21 +43,14 @@ test_stateVectorInverse =
     )
   , slowTest $ testProperty
     "elements state vector inverse"
-    (\(CanonicalOrbit o) (PositiveQuantity ν) ->
-      let μ           = primaryGravitationalParameter @Exact (traceShowId o)
-          sv          = stateVectorsAtTrueAnomaly o ν
-          (o', ν')    = elementsFromStateVectors μ sv
-          isEccentric = case periapsisSpecifier o of
-            Circular -> False
-            _        -> eccentricity o /= zero
-          isPositivelyInclined = case inclinationSpecifier o of
-            NonInclined  -> False
-            Inclined _ i -> i > zero
+    (\(CanonicalOrbit o) (PositiveQuantity ((`mod'` turn) -> ν)) ->
+      let μ              = primaryGravitationalParameter @Exact o
+          sv             = stateVectorsAtTrueAnomaly o ν
+          (o', ν')       = elementsFromStateVectors μ sv
           isNotParabolic = case Physics.Orbit.classify o of
             Parabolic -> False
             _         -> True
-      in  isEccentric
-            &&  isPositivelyInclined
+      in  validTrueAnomaly o ν
             &&  isNotParabolic
             ==> (o', ν')
             === (o , ν)

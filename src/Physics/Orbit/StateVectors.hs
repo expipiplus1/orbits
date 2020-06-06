@@ -102,28 +102,39 @@ elementsFromStateVectors
   -> (Orbit a, Angle a)
 elementsFromStateVectors μ sv@(StateVectors r v) = (o, ν)
  where
-  o  = Orbit e q inclinationSpecifier' periapsisSpecifier' μ
-  h  = specificAngularMomentumVector sv
-  n  = V3 0 0 1 `qCross` h
-  i  = qArcCos ((h ^. _z) |/| qNorm h)
-  e' = eccentricityVector μ sv
-  e  = qNorm e'
-  -- _E = 2 |*| qArcTan (qTan (ν |/| 2) |/| qSqrt ((1 + e) / (1 - e)))
-  -- _M = unRad _E - e * qSin _E
-  _Ω = if n ^. _y >= zero
-    then qArcCos (n ^. _x |/| qNorm n)
-    else turn |-| qArcCos (n ^. _x |/| qNorm n)
-  _ω = if e' ^. _z >= zero
-    then qArcCos ((n `qDot` e') |/| (qNorm n |*| qNorm e'))
-    else turn |-| qArcCos ((n `qDot` e') |/| (qNorm n |*| qNorm e'))
-  a = qRecip ((2 |/| qNorm r) |-| (qQuadrance v |/| μ))
-  ν = trueAnomalyAtPosition o r
-  -- ν = if r `qDot` v >= zero
-  --   then qArcCos ((e' `qDot` r) |/| (qNorm e' |*| qNorm r))
-  --   else turn |-| qArcCos ((e' `qDot` r) |/| (qNorm e' |*| qNorm r))
-  inclinationSpecifier' = if i == zero then NonInclined else Inclined _Ω i
-  periapsisSpecifier'   = if e == zero then Circular else Eccentric _ω
-  q                     = a |*| (1 - e)
+  o     = Orbit e q inclinationSpecifier' periapsisSpecifier' μ
+
+  h     = specificAngularMomentumVector sv
+  n     = V3 (qNegate (h ^. _y)) (h ^. _x) zero
+
+  e'    = eccentricityVector μ sv
+  eNorm = (recip e *) <$> e'
+  e     = qNorm e'
+
+  a     = qRecip ((2 |/| qNorm r) |-| (qQuadrance v |/| μ))
+
+  cosν  = eNorm `qDot` qNormalize r
+  ν     = if r `qDot` v >= zero then qArcCos cosν else turn |-| qArcCos cosν
+  -- ν  = trueAnomalyAtPosition o r
+
+  inclinationSpecifier' =
+    let i    = qArcCos ((h ^. _z) |/| qNorm h)
+        cosΩ = n ^. _x |/| qNorm n
+        _Ω   = if n ^. _y >= zero then qArcCos cosΩ else turn |-| qArcCos cosΩ
+    in  if h ^. _x == zero && h ^. _y == zero
+          then NonInclined
+          else Inclined _Ω i
+
+  -- If the orbit is not inclined, ω is relative to the reference direction
+  -- [1,0,0]
+  periapsisSpecifier' =
+    let cosω = case inclinationSpecifier' of
+          Inclined _ _ -> qNormalize n `qDot` eNorm
+          NonInclined  -> eNorm ^. _x
+        ω = if (e' ^. _z) >= zero then qArcCos cosω else turn |-| qArcCos cosω
+    in  if e == zero then Circular else Eccentric ω
+
+  q = a |*| (1 - e)
 
 -- | Calculate the true anomaly, ν, of a body at position, r, given its orbital
 -- elements.
