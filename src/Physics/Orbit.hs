@@ -1,3 +1,5 @@
+{-# language QuasiQuotes #-}
+
 -- | Types and functions for dealing with Kepler orbits.
 module Physics.Orbit
   ( -- * The Orbit data type and dependencies
@@ -432,7 +434,7 @@ timeAtHyperbolicAnomaly o =
 timeAtTrueAnomaly
   :: (Real a, Floating a) => Orbit a -> Angle a -> Maybe (Time a)
 timeAtTrueAnomaly o ν = case classify o of
-  c | Just d <- hyperbolicDepartureAngle o, qAbs ν |>| d -> Nothing
+  _ | Just d <- hyperbolicDepartureAngle o, qAbs ν |>| d -> Nothing
   Parabolic ->
     let _D = qTan (ν |/| 2)
         t  = 0.5 |*| qSqrt (qCube l |/| μ) |*| (_D |+| (qCube _D |/| 3))
@@ -482,7 +484,7 @@ meanAnomalyAtHyperbolicAnomaly o _H = case classify o of
   _          -> Nothing
  where
   e  = eccentricity o
-  _M = addRad $ e * qSinh _H - (quantity (_H # RadianHyperbolic))
+  _M = addRad $ e * qSinh _H - quantity (_H # RadianHyperbolic)
 
 -- | Calculate the mean anomaly, M, of an orbiting body when at the given true
 -- anomaly, ν.
@@ -721,7 +723,6 @@ trueAnomalyAtHyperbolicAnomaly o _H = case classify o of
   _          -> Nothing
  where
   e         = eccentricity o
-  sign      = signum (_H # RadianHyperbolic)
   tanνOver2 = sqrt ((e + 1) / (e - 1)) * qTanh (_H |/| 2)
   ν         = 2 |*| qArcTan tanνOver2
 
@@ -733,7 +734,7 @@ trueAnomalyAtHyperbolicAnomaly o _H = case classify o of
 -- true anomaly.
 radiusAtTrueAnomaly :: (Ord a, Floating a) => Orbit a -> Angle a -> Distance a
 radiusAtTrueAnomaly o trueAnomaly = case semiMajorAxis o of
-  Just a  -> l |/| (1 |+| e |*| qCos ν)
+  Just _  -> l |/| (1 |+| e |*| qCos ν)
   Nothing -> (qSq h |/| μ) |*| (1 |/| (1 |+| qCos ν))
  where
   h = specificAngularMomentum o
@@ -805,8 +806,8 @@ rdh = (% RadianHyperbolic)
 qCos :: Floating a => Angle a -> Unitless a
 qCos θ = quantity $ cos (θ # [si|rad|])
 
-qSin :: Floating a => Angle a -> Unitless a
-qSin θ = quantity $ sin (θ # [si|rad|])
+-- qSin :: Floating a => Angle a -> Unitless a
+-- qSin θ = quantity $ sin (θ # [si|rad|])
 
 qTan :: Floating a => Angle a -> Unitless a
 qTan θ = quantity $ tan (θ # [si|rad|])
@@ -814,7 +815,7 @@ qTan θ = quantity $ tan (θ # [si|rad|])
 qArcTan :: Floating a => Unitless a -> Angle a
 qArcTan = rad . atan . (# [si||])
 
-qRecip x = 1 |/| x
+-- qRecip x = 1 |/| x
 
 qTanh :: Floating a => AngleH a -> Unitless a
 qTanh = quantity . tanh . (# RadianHyperbolic)

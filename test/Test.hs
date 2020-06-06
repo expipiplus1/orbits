@@ -574,16 +574,20 @@ test_angularMomentum =
                  (\(HyperbolicOrbitF o) -> specificOrbitalEnergy o > zero)
   ]
 
+main :: IO ()
+main = do
+  let is = includingOptions [slowTestQCRatio] : defaultIngredients
+  defaultMainWithIngredients is $(testGroupGenerator)
+
+----------------------------------------------------------------
+-- Orbit utils
+----------------------------------------------------------------
+
 validTrueAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Bool
 validTrueAnomaly o ν = case hyperbolicDepartureAngle o of
   Nothing -> True
   Just d  -> qAbs ν < d
   where qAbs x = if x < zero then qNegate x else x
-
-main :: IO ()
-main = do
-  let is = includingOptions [slowTestQCRatio] : defaultIngredients
-  defaultMainWithIngredients is $(testGroupGenerator)
 
 ----------------------------------------------------------------
 -- Utils
