@@ -1,4 +1,6 @@
-{ pkgs ? import <nixpkgs> { }, compiler ? "ghc882", hoogle ? true }:
+{ nixpkgsSrc ? builtins.fetchTarball
+  "https://github.com/NixOS/nixpkgs/archive/e985ffea2d640bb6fe7d5ef7aa968b2b7d107f47.tar.gz"
+, pkgs ? import nixpkgsSrc { }, compiler ? "ghc882", hoogle ? true }:
 
 let
   src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
