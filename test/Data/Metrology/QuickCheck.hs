@@ -17,6 +17,7 @@ import           Test.QuickCheck.Checkers       ( EqProp(..)
                                                 )
 
 newtype PositiveQuantity a = PositiveQuantity { getPositiveQuantity :: a }
+  deriving(Show)
 
 deriving instance Arbitrary a => Arbitrary (Qu u l a)
 
@@ -24,7 +25,8 @@ deriving instance Random a => Random (Qu u l a)
 
 instance (Num a, Ord a, Arbitrary a) => Arbitrary (PositiveQuantity (Qu u l a)) where
   arbitrary = PositiveQuantity . Qu . getPositive <$> arbitrary
-  shrink (PositiveQuantity x) = PositiveQuantity <$> shrink x
+  shrink (PositiveQuantity (Qu x)) =
+    PositiveQuantity . Qu . getPositive <$> shrink (Positive x)
 
 instance (Eq a) => EqProp (Qu u l a) where
   (=-=) = eq

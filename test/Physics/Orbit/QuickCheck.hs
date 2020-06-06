@@ -9,6 +9,7 @@ module Physics.Orbit.QuickCheck
   , EllipticOrbit(..)
   , ParabolicOrbit(..)
   , HyperbolicOrbit(..)
+  , CanonicalOrbit(..)
   , pattern CircularOrbitF
   , pattern EllipticOrbitF
   , pattern ParabolicOrbitF
@@ -17,16 +18,21 @@ module Physics.Orbit.QuickCheck
   , overAllClasses
   ) where
 
+import           Data.Constants.Mechanics.Extra
+import           Data.Functor
 import           Data.Metrology
+import           Data.Metrology.Extra           ( mod' )
 import           Data.Metrology.QuickCheck
 import           Data.Metrology.Unsafe
 import           Data.Units.SI.Parser
+import           Linear.V3
 import           Physics.Orbit                  ( Distance
                                                 , InclinationSpecifier(..)
                                                 , Orbit(..)
                                                 , PeriapsisSpecifier(..)
                                                 , Unitless
                                                 )
+import           Physics.Orbit.StateVectors
 import           System.Random                  ( Random )
 import           Test.QuickCheck                ( Arbitrary(..)
                                                 , Testable
@@ -49,6 +55,10 @@ newtype ParabolicOrbit a = ParabolicOrbit {getParabolicOrbit :: Orbit a}
   deriving(Show, Eq)
 
 newtype HyperbolicOrbit a = HyperbolicOrbit {getHyperbolicOrbit :: Orbit a}
+  deriving(Show, Eq)
+
+-- | An orbit where all angles are in [0..2π) or [0..π)
+newtype CanonicalOrbit a = CanonicalOrbit {getCanonicalOrbit :: Orbit a}
   deriving(Show, Eq)
 
 pattern CircularOrbitF :: Orbit Float -> CircularOrbit Float
@@ -117,10 +127,24 @@ instance (Num a, Ord a, Random a, Arbitrary a) => Arbitrary (HyperbolicOrbit a) 
       pure . HyperbolicOrbit $ Orbit { .. }
   shrink (HyperbolicOrbit o) = HyperbolicOrbit <$> shrinkOrbit o
 
+instance (Floating a, Real a, Random a, Arbitrary a) => Arbitrary (CanonicalOrbit a) where
+  arbitrary = do
+    PositiveQuantity eccentricity <- arbitrary
+    PositiveQuantity periapsis    <- arbitrary
+    inclinationSpecifier          <- arbitrary <&> \case
+      NonInclined   -> NonInclined
+      Inclined _Ω i -> Inclined (_Ω `mod'` turn) (i `mod'` (halfTurn |/| 2))
+    periapsisSpecifier <- arbitrary <&> \case
+      Circular    -> Circular
+      Eccentric ω -> Eccentric (ω `mod'` turn)
+    PositiveQuantity primaryGravitationalParameter <- arbitrary
+    pure . CanonicalOrbit $ Orbit { .. }
+  shrink (CanonicalOrbit o) = CanonicalOrbit <$> shrinkOrbit o
+
 instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
   arbitrary = oneof [pure NonInclined, Inclined <$> arbitrary <*> arbitrary]
-  shrink Inclined { .. } = [NonInclined]
-  shrink NonInclined = []
+  shrink Inclined {..} = [NonInclined]
+  shrink NonInclined   = []
 
 -- | The instance of Arbitrary for PeriapsisSpecifier doesn't generate Circular
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (PeriapsisSpecifier a) where
@@ -189,3 +213,18 @@ overAllClasses t =
   , testProperty "parabolic"  (\(ParabolicOrbit o) -> t o)
   , testProperty "hyperbolic" (\(HyperbolicOrbit o) -> t o)
   ]
+
+
+----------------------------------------------------------------
+-- StateVectors
+----------------------------------------------------------------
+
+instance (Num a, Eq a, Arbitrary a) => Arbitrary (StateVectors a) where
+  arbitrary =
+    do
+        r <- V3 <$> arbitrary <*> arbitrary <*> arbitrary
+        v <- V3 <$> arbitrary <*> arbitrary <*> arbitrary
+        pure $ StateVectors r v
+      `suchThat` (\(StateVectors r v) ->
+                   r /= V3 zero zero zero && v /= V3 zero zero zero
+                 )

@@ -34,6 +34,7 @@ Nomenclature
 | εk     | Specific kinetic energy          |                                |
 | v      | Orbital speed or velocity        |                                |
 | r      | The radius to the orbiting body  |                                |
+| φ      | Flight path angle                |                                |
 
 
 Note that in the Haskell source uppercase symbols such as Ω and M are written

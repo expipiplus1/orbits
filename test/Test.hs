@@ -9,93 +9,43 @@ module Main
   ( main
   ) where
 
-import           Control.Applicative            ( (<|>) )
 import           Data.CReal                     ( CReal )
 import           Data.CReal.QuickCheck          ( )
 import           Data.Coerce                    ( coerce )
 import           Data.Constants.Mechanics.Extra
 import           Data.Maybe
-import           Data.Maybe                     ( fromJust )
 import           Data.Metrology          hiding ( (%) )
 import           Data.Metrology.Extra
-import           Data.Proxy                     ( Proxy(..) )
-import           Data.Ratio                     ( (%) )
-import           Data.Tagged                    ( Tagged(..) )
 import           Data.Units.SI.Parser
-import           Numeric                        ( readFloat )
 import           Physics.Orbit
 import           Physics.Orbit.QuickCheck
-import           Test.QuickCheck                ( Small(..) )
 import           Test.QuickCheck.Arbitrary      ( Arbitrary )
 import           Test.QuickCheck.Checkers       ( inverse
                                                 , inverseL
                                                 )
-import           Test.QuickCheck.Extra          ( )
+import           Test.QuickCheck.Extra          ( slowTest
+                                                , slowTestQCRatio
+                                                )
 import           Test.Tasty                     ( TestTree
-                                                , adjustOption
-                                                , askOption
                                                 , defaultIngredients
                                                 , defaultMainWithIngredients
                                                 , includingOptions
                                                 , testGroup
                                                 )
-import           Test.Tasty.Options             ( IsOption(..)
-                                                , OptionDescription(..)
-                                                )
 import           Test.Tasty.QuickCheck          ( (===)
                                                 , (==>)
-                                                , QuickCheckTests(..)
                                                 , testProperty
                                                 )
 import           Test.Tasty.TH                  ( testGroupGenerator )
-import           Text.ParserCombinators.ReadP   ( char
-                                                , eof
-                                                , readP_to_S
-                                                , readS_to_P
-                                                )
 import           WrappedAngle                   ( WrappedAngle(..) )
+
+import qualified Test.StateVectors
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
 -- | The type used for tests which require exact arithmetic. They are compared
 -- at a resolution of 2^32
 type Exact = CReal 32
-
---------------------------------------------------------------------------------
--- Disable some really slow tests by default
---------------------------------------------------------------------------------
-
-newtype SlowTestQCRatio = SlowTestQCRatio Rational
-
-slowTestQCRatio :: OptionDescription
-slowTestQCRatio = Option (Proxy :: Proxy SlowTestQCRatio)
-
-readRational :: String -> Maybe Rational
-readRational s = case readP_to_S readRationalP s of
-                   [(r,"")] -> Just r
-                   _ -> Nothing
-  where readRationalP = readS_to_P readFloat <* eof
-                    <|> do n <- readS_to_P reads
-                           _ <- char '/'
-                           d <- readS_to_P reads
-                           eof
-                           pure (n%d)
-
-instance IsOption SlowTestQCRatio where
-  defaultValue = SlowTestQCRatio (1%10)
-  parseValue = fmap SlowTestQCRatio . readRational
-  optionName = Tagged "slow-test-ratio"
-  optionHelp = Tagged $
-    unwords [ "Some of the slow tests can take a long time to run; set this"
-            , "flag to change the number of slow test QuickCheck test cases as"
-            , "a proportion of the non-slow test number."
-            ]
-
-slowTest :: TestTree -> TestTree
-slowTest t = askOption (\(SlowTestQCRatio r) ->
-                          adjustOption (qcRatio r) t)
-  where qcRatio r (QuickCheckTests n) =
-          QuickCheckTests (floor (fromIntegral n * r))
 
 --------------------------------------------------------------------------------
 -- The tests
@@ -574,6 +524,9 @@ test_angularMomentum =
                  (\(HyperbolicOrbitF o) -> specificOrbitalEnergy o > zero)
   ]
 
+test_stateVectors :: [TestTree]
+test_stateVectors = [Test.StateVectors.tests]
+
 main :: IO ()
 main = do
   let is = includingOptions [slowTestQCRatio] : defaultIngredients
@@ -587,17 +540,4 @@ validTrueAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Bool
 validTrueAnomaly o ν = case hyperbolicDepartureAngle o of
   Nothing -> True
   Just d  -> qAbs ν < d
-  where qAbs x = if x < zero then qNegate x else x
 
-----------------------------------------------------------------
--- Utils
-----------------------------------------------------------------
-
-qCos :: Floating a => Angle a -> Unitless a
-qCos θ = quantity $ cos (θ # [si|rad|])
-
-qSin :: Floating a => Angle a -> Unitless a
-qSin θ = quantity $ sin (θ # [si|rad|])
-
-qCosh :: Floating a => AngleH a -> Unitless a
-qCosh = quantity . cosh . (# RadianHyperbolic)

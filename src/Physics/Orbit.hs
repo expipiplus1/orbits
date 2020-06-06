@@ -89,13 +89,11 @@ import           Data.Bifunctor                 ( bimap
 import           Data.CReal.Converge            ( Converge
                                                 , convergeErr
                                                 )
-import           Data.Coerce
 import           Data.Constants.Mechanics.Extra
 import           Data.Maybe                     ( fromJust )
 import           Data.Metrology
 import           Data.Metrology.Extra
 import           Data.Metrology.Show            ( )
-import           Data.Metrology.TH
 import           Data.Metrology.Unsafe          ( Qu(..)
                                                 , UnsafeQu(..)
                                                 )
@@ -109,30 +107,11 @@ import           Numeric.AD.Halley              ( findZero
                                                 )
 import           Numeric.AD.Internal.Identity   ( Id(..) )
 import qualified Numeric.AD.Newton.Double      as Newton
+import           Physics.Orbit.Metrology
 
 --------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
-
-declareDimension "PlaneAngleHyperbolic"
-declareCanonicalUnit "RadianHyperbolic" [t| PlaneAngleHyperbolic |] (Just "rdh")
-type instance DefaultUnitOfDim PlaneAngleHyperbolic = RadianHyperbolic
-
-type Quantity u = MkQu_ULN u 'DefaultLCSU
--- | A measure in seconds.
-type Time     = Quantity [si|s|]
--- | A measure in meters.
-type Distance = Quantity [si| m |]
--- | A measure in meters per second.
-type Speed    = Quantity [si| m s^-1 |]
--- | A measure in kilograms.
-type Mass     = Quantity [si| kg |]
--- | A measure in radians.
-type Angle    = Quantity [si| rad |]
--- | A measure in radians (hyperbolic)
-type AngleH   = Quantity RadianHyperbolic
--- | A unitless measure.
-type Unitless = Quantity [si||]
 
 -- | Data type defining an orbit parameterized by the type used to
 -- represent values
@@ -272,13 +251,11 @@ isValid o = e >= 0 &&
 
 -- | What shape is the orbit
 classify :: (Num a, Ord a) => Orbit a -> Classification
-classify o
-  | e < 1 = Elliptic
-  | e == 1 = Parabolic
-  | e > 1 = Hyperbolic
-  | otherwise = error "classify"
-  where
-    e = eccentricity o
+classify o | e < 1     = Elliptic
+           | e == 1    = Parabolic
+           | e > 1     = Hyperbolic
+           | otherwise = error "classify: NaN eccentricity"
+  where e = eccentricity o
 
 -- | Calculate the semi-major axis, a, of the 'Orbit'. Returns 'Nothing' when
 -- given a parabolic orbit for which there is no semi-major axis. Note that the
@@ -695,7 +672,7 @@ trueAnomalyAtMeanAnomaly o _M = case classify o of
     (trueAnomalyAtEccentricAnomaly o <=< eccentricAnomalyAtMeanAnomaly o $ _M)
   Hyperbolic -> fromJust
     (trueAnomalyAtHyperbolicAnomaly o <=< hyperbolicAnomalyAtMeanAnomaly o $ _M)
-  _ -> error "TODO: true from mean"
+  _ -> error "trueAnomalyAtMeanAnomaly is not defined for Parabolic orbits"
 
 -- | Calculate the true anomaly, ν, of an orbiting body when it has the given
 -- eccentric anomaly, _E.
@@ -792,39 +769,3 @@ specificKineticEnergyAtTrueAnomaly o ν = qSq (speedAtTrueAnomaly o ν) |/| 2
 escapeVelocityAtDistance
   :: (Floating a) => Quantity [si| m^3 s^-2 |] a -> Distance a -> Speed a
 escapeVelocityAtDistance μ r = qSqrt (2 |*| μ |/| r)
-
-----------------------------------------------------------------
--- Internal Utils
-----------------------------------------------------------------
-
-rad :: Fractional a => a -> Angle a
-rad = (% [si|rad|])
-
-rdh :: Fractional a => a -> AngleH a
-rdh = (% RadianHyperbolic)
-
-qCos :: Floating a => Angle a -> Unitless a
-qCos θ = quantity $ cos (θ # [si|rad|])
-
--- qSin :: Floating a => Angle a -> Unitless a
--- qSin θ = quantity $ sin (θ # [si|rad|])
-
-qTan :: Floating a => Angle a -> Unitless a
-qTan θ = quantity $ tan (θ # [si|rad|])
-
-qArcTan :: Floating a => Unitless a -> Angle a
-qArcTan = rad . atan . (# [si||])
-
--- qRecip x = 1 |/| x
-
-qTanh :: Floating a => AngleH a -> Unitless a
-qTanh = quantity . tanh . (# RadianHyperbolic)
-
-qSinh :: Floating a => AngleH a -> Unitless a
-qSinh = quantity . sinh . (# RadianHyperbolic)
-
-qArcCosh :: Floating a => Unitless a -> AngleH a
-qArcCosh = rdh . acosh . (# [si||])
-
-qAbs :: forall a l u . Num a => Qu u l a -> Qu u l a
-qAbs = coerce (abs @a)
