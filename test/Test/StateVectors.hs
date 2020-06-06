@@ -51,6 +51,36 @@ test_stateVectorInverse =
           (o', ν') = elementsFromStateVectors μ sv
       in  validTrueAnomaly o ν ==> (o', ν') === (o, ν)
     )
+  , slowTest $ testProperty
+    "elements state vector inverse 2"
+    (\(normalizeOrbit -> o) (PositiveQuantity ((`mod'` turn) -> ν)) ->
+      let μ        = primaryGravitationalParameter @Exact o
+          sv       = stateVectorsAtTrueAnomaly o ν
+          (o', ν') = elementsFromStateVectors μ sv
+      in  validTrueAnomaly o ν ==> normalizeν (o', ν') === normalizeν (o, ν)
+    )
+  ]
+ where
+  normalizeν (o, ν) = case periapsisSpecifier o of
+    Eccentric ω | eccentricity o == 0 ->
+      (o { periapsisSpecifier = Circular }, (ν |+| ω) `mod'` turn)
+    _ -> (o, ν `mod'` turn)
+
+test_normalize :: [TestTree]
+test_normalize =
+  [ testProperty
+    "state vectors invariant over normalize"
+    (\o ν ->
+      let oN = normalizeOrbit @Exact o
+      in  stateVectorsAtTrueAnomaly o ν === stateVectorsAtTrueAnomaly oN ν
+    )
+  , testProperty
+    "plane quaternion invariant over normalize"
+    (\o ->
+      let q1 = orbitalPlaneQuaternion @Exact o
+          q2 = orbitalPlaneQuaternion (normalizeOrbit o)
+      in  q1 === q2 .||. q1 === negate q2
+    )
   ]
 
 test_positionVelocity :: [TestTree]

@@ -12,6 +12,7 @@ module Physics.Orbit
     -- ** Utilities
   , isValid
   , classify
+  , normalizeOrbit
     -- ** Orbital elements
   , apoapsis
   , meanMotion
@@ -256,6 +257,35 @@ classify o | e < 1     = Elliptic
            | e > 1     = Hyperbolic
            | otherwise = error "classify: NaN eccentricity"
   where e = eccentricity o
+
+-- | Return an equivalent orbit such that
+--
+-- - i ∈ [0..π)
+-- - Ω ∈ [0..2π)
+-- - ω ∈ [0..2π)
+-- - inclinationSpecifier == NonInclined if i = 0
+-- - periapsisSpecifier == Circular if e == 0 and ω == 0
+normalizeOrbit :: (Floating a, Real a) => Orbit a -> Orbit a
+normalizeOrbit (Orbit e q inc per μ) = Orbit e q inc' per' μ
+ where
+  -- Were we actually given a descending node and have to flip things
+  (inc', flipped) = case inc of
+    NonInclined              -> (NonInclined, False)
+    Inclined _ i | i == zero -> (NonInclined, False)
+    Inclined _Ω i ->
+      let iR  = i `mod'` turn
+          i'  = if flipped then turn |-| iR else iR
+          _Ω' = (if flipped then _Ω |+| halfTurn else _Ω) `mod'` turn
+      in  (Inclined _Ω' i', iR >= halfTurn)
+
+  per' = case per of
+    Circular | flipped   -> Eccentric halfTurn
+             | otherwise -> Circular
+    Eccentric ω
+      | ω == zero, e == 0, not flipped
+      -> Circular
+      | otherwise
+      -> Eccentric $ (if flipped then ω |+| halfTurn else ω) `mod'` turn
 
 -- | Calculate the semi-major axis, a, of the 'Orbit'. Returns 'Nothing' when
 -- given a parabolic orbit for which there is no semi-major axis. Note that the

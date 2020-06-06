@@ -25,8 +25,7 @@ deriving instance Random a => Random (Qu u l a)
 
 instance (Num a, Ord a, Arbitrary a) => Arbitrary (PositiveQuantity (Qu u l a)) where
   arbitrary = PositiveQuantity . Qu . getPositive <$> arbitrary
-  shrink (PositiveQuantity (Qu x)) =
-    PositiveQuantity . Qu . getPositive <$> shrink (Positive x)
+  shrink (PositiveQuantity (Qu x)) = [ PositiveQuantity (Qu 1) | x /= 1 ]
 
 instance (Eq a) => EqProp (Qu u l a) where
   (=-=) = eq

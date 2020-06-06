@@ -150,7 +150,7 @@ instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
 -- | The instance of Arbitrary for PeriapsisSpecifier doesn't generate Circular
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (PeriapsisSpecifier a) where
   arbitrary = Eccentric <$> arbitrary
-  shrink (Eccentric x) = [Eccentric zero | x == zero]
+  shrink (Eccentric x) = [Eccentric zero | x /= zero]
   shrink Circular = []
 
 --------------------------------------------------------------------------------

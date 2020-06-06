@@ -109,15 +109,21 @@ elementsFromStateVectors μ sv@(StateVectors r v) = (o, ν)
   n     = V3 (qNegate (h ^. _y)) (h ^. _x) zero
 
   e'    = eccentricityVector μ sv
-  eNorm = (recip e *) <$> e'
   e     = qNorm e'
+  eNorm = (recip e *) <$> e'
 
-  a     = qRecip ((2 |/| qNorm r) |-| (qQuadrance v |/| μ))
+  aInv  = (2 |/| qNorm r) |-| (qQuadrance v |/| μ)
+  a     = qRecip aInv
+  q     = if aInv == zero -- parabolic trajectory
+    then qQuadrance h |/| (2 |*| μ)
+    else a |*| (1 - e)
 
-  cosν  = eNorm `qDot` qNormalize r
-  ν     = if r `qDot` v >= zero then qArcCos cosν else turn |-| qArcCos cosν
-  -- alternatively
-  -- ν  = trueAnomalyAtPosition o r
+  ν = if e == zero
+    then -- fall back to the slower version if this is a circular orbit
+         trueAnomalyAtPosition o r
+    else
+      let cosν = eNorm `qDot` qNormalize r
+      in  if r `qDot` v >= zero then qArcCos cosν else turn |-| qArcCos cosν
 
   inclinationSpecifier' =
     let i    = qArcCos ((h ^. _z) |/| qNorm h)
@@ -133,10 +139,13 @@ elementsFromStateVectors μ sv@(StateVectors r v) = (o, ν)
     let cosω = case inclinationSpecifier' of
           Inclined _ _ -> qNormalize n `qDot` eNorm
           NonInclined  -> eNorm ^. _x
-        ω = if (e' ^. _z) >= zero then qArcCos cosω else turn |-| qArcCos cosω
+        -- ω = if (e' ^. _z) >= zero then qArcCos cosω else turn |-| qArcCos cosω
+        ω = case inclinationSpecifier' of
+          Inclined _ _ ->
+            if (e' ^. _z) >= zero then qArcCos cosω else turn |-| qArcCos cosω
+          NonInclined ->
+            let sinω = eNorm ^. _y in qArcTan2 sinω cosω `mod'` turn
     in  if e == zero then Circular else Eccentric ω
-
-  q = a |*| (1 - e)
 
 -- | Calculate the true anomaly, ν, of a body at position, r, given its orbital
 -- elements.
@@ -160,7 +169,7 @@ eccentricityVector
   -> V3 (Unitless a)
 eccentricityVector μ sv@(StateVectors r v) = e
  where
-  e = (v `qCross` h) |^/| μ |^-^| (r |^/| qNorm r)
+  e = (v `qCross` h) |^/| μ |^-^| qNormalize r
   h = specificAngularMomentumVector sv
 
 ----------------------------------------------------------------
