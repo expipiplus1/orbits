@@ -14,6 +14,7 @@ module Physics.Orbit.StateVectors
     -- *** Conversion from state vectors
   , elementsFromStateVectors
   , eccentricityVector
+  , trueAnomalyAtPosition
     -- *** Rotations to and from orbital plane
   , orbitalPlaneQuaternion
   , rotateToPlane
@@ -115,6 +116,7 @@ elementsFromStateVectors μ sv@(StateVectors r v) = (o, ν)
 
   cosν  = eNorm `qDot` qNormalize r
   ν     = if r `qDot` v >= zero then qArcCos cosν else turn |-| qArcCos cosν
+  -- alternatively
   -- ν  = trueAnomalyAtPosition o r
 
   inclinationSpecifier' =

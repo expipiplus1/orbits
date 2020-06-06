@@ -19,7 +19,6 @@ module Physics.Orbit.QuickCheck
   ) where
 
 import           Data.Constants.Mechanics.Extra
-import           Data.Functor
 import           Data.Metrology
 import           Data.Metrology.Extra           ( mod' )
 import           Data.Metrology.QuickCheck
@@ -151,7 +150,7 @@ instance Arbitrary a => Arbitrary (InclinationSpecifier a) where
 -- | The instance of Arbitrary for PeriapsisSpecifier doesn't generate Circular
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (PeriapsisSpecifier a) where
   arbitrary = Eccentric <$> arbitrary
-  shrink (Eccentric x) = if x == zero then [] else [Eccentric zero]
+  shrink (Eccentric x) = [Eccentric zero | x == zero]
   shrink Circular = []
 
 --------------------------------------------------------------------------------
@@ -184,8 +183,8 @@ shrinkPrimaryGravitationalParameter
   :: (Num a, Eq a)
   => MkQu_ULN [si|m^3 s^-2|] 'DefaultLCSU a
   -> [MkQu_ULN [si|m^3 s^-2|] 'DefaultLCSU a]
-shrinkPrimaryGravitationalParameter μ | μ == (Qu 1) = []
-                                      | otherwise   = [Qu 1]
+shrinkPrimaryGravitationalParameter μ | μ == Qu 1 = []
+                                      | otherwise = [Qu 1]
 
 
 --------------------------------------------------------------------------------

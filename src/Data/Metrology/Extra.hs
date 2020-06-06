@@ -13,7 +13,6 @@ import qualified Data.Fixed                    as F
 import           Data.Metrology
 import           Data.Metrology.Unsafe          ( Qu(..) )
 import           Data.Units.SI.Parser
-import           Linear.Epsilon
 import           Linear.Metric
 import           Linear.V3
 import           Linear.Vector

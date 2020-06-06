@@ -1,3 +1,5 @@
+{-# language QuasiQuotes #-}
+
 module Test.StateVectors where
 
 import           Control.Lens.Operators         ( (^.) )
@@ -44,16 +46,10 @@ test_stateVectorInverse =
   , slowTest $ testProperty
     "elements state vector inverse"
     (\(CanonicalOrbit o) (PositiveQuantity ((`mod'` turn) -> ν)) ->
-      let μ              = primaryGravitationalParameter @Exact o
-          sv             = stateVectorsAtTrueAnomaly o ν
-          (o', ν')       = elementsFromStateVectors μ sv
-          isNotParabolic = case Physics.Orbit.classify o of
-            Parabolic -> False
-            _         -> True
-      in  validTrueAnomaly o ν
-            &&  isNotParabolic
-            ==> (o', ν')
-            === (o , ν)
+      let μ        = primaryGravitationalParameter @Exact o
+          sv       = stateVectorsAtTrueAnomaly o ν
+          (o', ν') = elementsFromStateVectors μ sv
+      in  validTrueAnomaly o ν ==> (o', ν') === (o, ν)
     )
   ]
 
@@ -88,7 +84,7 @@ test_positionVelocity =
     (\o ->
       let v     = velocityInPlaneAtTrueAnomaly @Exact o zero
           speed = speedAtTrueAnomaly o zero
-      in  v === (V3 zero speed zero)
+      in  v === V3 zero speed zero
     )
   , testProperty
     "velocity in circular orbit"
