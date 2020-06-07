@@ -4,7 +4,7 @@ cabal-version: 1.24
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 210617f8f0d2570518df3aff12361ae96ec5142dcfb2f02f4ab916fa15d44cc5
+-- hash: ce043bffd83b1b5f25190fda481d4e54eec518530f2c96d5482c0e829c115d63
 
 name:           orbits
 version:        0.3
@@ -38,16 +38,21 @@ library
   exposed-modules:
       Data.Constants.Mechanics.Extra
       Physics.Orbit
+      Physics.Orbit.Metrology
+      Physics.Orbit.Sol
+      Physics.Orbit.StateVectors
   other-modules:
       Data.Metrology.Extra
   hs-source-dirs:
       src
-  default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators ViewPatterns
   ghc-options: -Wall -O2
   build-depends:
       ad >=4.3.2
     , base >=4.8 && <5
     , exact-real >=0.12
+    , lens
+    , linear
     , units
     , units-defs >=2.2
   default-language: Haskell2010
@@ -59,8 +64,8 @@ test-suite doctests
       
   hs-source-dirs:
       test/doctest
-  default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
-  ghc-options: -Wall
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators ViewPatterns
+  ghc-options: -Wall -O2
   build-depends:
       base
     , doctest
@@ -71,25 +76,26 @@ test-suite test
   main-is: Test.hs
   other-modules:
       Data.CReal.QuickCheck
+      Data.Metrology.Extra
       Data.Metrology.QuickCheck
+      Linear.QuickCheck
       Physics.Orbit.QuickCheck
       Test.QuickCheck.Extra
+      Test.StateVectors
       WrappedAngle
-      Data.Constants.Mechanics.Extra
-      Data.Metrology.Extra
-      Physics.Orbit
       Paths_orbits
   hs-source-dirs:
       test
-      src
-  default-extensions: DataKinds GeneralizedNewtypeDeriving QuasiQuotes ScopedTypeVariables TypeOperators
-  ghc-options: -Wall -threaded
+  default-extensions: DataKinds FlexibleContexts GeneralizedNewtypeDeriving LambdaCase QuasiQuotes ScopedTypeVariables TemplateHaskell TypeApplications TypeFamilies TypeOperators ViewPatterns
+  ghc-options: -Wall -O2 -threaded
   build-depends:
       QuickCheck
     , ad
     , base
     , checkers
     , exact-real
+    , lens
+    , linear
     , orbits
     , random
     , tagged

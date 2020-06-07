@@ -6,10 +6,19 @@ module Data.CReal.QuickCheck
 
 import           Data.CReal
 import           GHC.TypeLits
-import           Test.QuickCheck.Arbitrary (Arbitrary (..),
-                                            arbitrarySizedFractional,
-                                            shrinkRealFrac)
+import           Linear.Conjugate
+import           Linear.Epsilon
+import           Test.QuickCheck.Arbitrary      ( Arbitrary(..)
+                                                , arbitrarySizedFractional
+                                                , shrinkRealFrac
+                                                )
 
 instance KnownNat n => Arbitrary (CReal n) where
   arbitrary = arbitrarySizedFractional
   shrink = shrinkRealFrac
+
+instance TrivialConjugate (CReal n) where
+instance Conjugate (CReal n) where
+
+instance Epsilon (CReal n) where
+  nearZero = const False

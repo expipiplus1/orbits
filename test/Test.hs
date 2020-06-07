@@ -9,88 +9,43 @@ module Main
   ( main
   ) where
 
-import           Control.Applicative            ( (<|>) )
 import           Data.CReal                     ( CReal )
 import           Data.CReal.QuickCheck          ( )
 import           Data.Coerce                    ( coerce )
 import           Data.Constants.Mechanics.Extra
-import           Data.Maybe                     ( fromJust )
+import           Data.Maybe
 import           Data.Metrology          hiding ( (%) )
 import           Data.Metrology.Extra
-import           Data.Proxy                     ( Proxy(..) )
-import           Data.Ratio                     ( (%) )
-import           Data.Tagged                    ( Tagged(..) )
 import           Data.Units.SI.Parser
-import           Numeric                        ( readFloat )
 import           Physics.Orbit
 import           Physics.Orbit.QuickCheck
 import           Test.QuickCheck.Arbitrary      ( Arbitrary )
-import           Test.QuickCheck.Checkers       ( inverse )
+import           Test.QuickCheck.Checkers       ( inverse
+                                                , inverseL
+                                                )
+import           Test.QuickCheck.Extra          ( slowTest
+                                                , slowTestQCRatio
+                                                )
 import           Test.Tasty                     ( TestTree
-                                                , adjustOption
-                                                , askOption
                                                 , defaultIngredients
                                                 , defaultMainWithIngredients
                                                 , includingOptions
                                                 , testGroup
                                                 )
-import           Test.Tasty.Options             ( IsOption(..)
-                                                , OptionDescription(..)
-                                                )
 import           Test.Tasty.QuickCheck          ( (===)
                                                 , (==>)
-                                                , QuickCheckTests(..)
                                                 , testProperty
                                                 )
 import           Test.Tasty.TH                  ( testGroupGenerator )
-import           Text.ParserCombinators.ReadP   ( char
-                                                , eof
-                                                , readP_to_S
-                                                , readS_to_P
-                                                )
 import           WrappedAngle                   ( WrappedAngle(..) )
+
+import qualified Test.StateVectors
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
 -- | The type used for tests which require exact arithmetic. They are compared
 -- at a resolution of 2^32
 type Exact = CReal 32
-
---------------------------------------------------------------------------------
--- Disable some really slow tests by default
---------------------------------------------------------------------------------
-
-newtype SlowTestQCRatio = SlowTestQCRatio Rational
-
-slowTestQCRatio :: OptionDescription
-slowTestQCRatio = Option (Proxy :: Proxy SlowTestQCRatio)
-
-readRational :: String -> Maybe Rational
-readRational s = case readP_to_S readRationalP s of
-                   [(r,"")] -> Just r
-                   _ -> Nothing
-  where readRationalP = readS_to_P readFloat <* eof
-                    <|> do n <- readS_to_P reads
-                           _ <- char '/'
-                           d <- readS_to_P reads
-                           eof
-                           pure (n%d)
-
-instance IsOption SlowTestQCRatio where
-  defaultValue = SlowTestQCRatio (1%10)
-  parseValue = fmap SlowTestQCRatio . readRational
-  optionName = Tagged "slow-test-ratio"
-  optionHelp = Tagged $
-    unwords [ "Some of the slow tests can take a long time to run; set this"
-            , "flag to change the number of slow test QuickCheck test cases as"
-            , "a proportion of the non-slow test number."
-            ]
-
-slowTest :: TestTree -> TestTree
-slowTest t = askOption (\(SlowTestQCRatio r) ->
-                          adjustOption (qcRatio r) t)
-  where qcRatio r (QuickCheckTests n) =
-          QuickCheckTests (floor (fromIntegral n * r))
 
 --------------------------------------------------------------------------------
 -- The tests
@@ -330,6 +285,9 @@ anomalyTimeConversionTests anomalyToTime fromName =
 (.:) :: (a -> b) -> (c -> d -> a) -> c -> d -> b
 f .: g = \x y -> f (g x y)
 
+(~>) :: Bool -> Bool -> Bool
+a ~> b = not a || b
+
 test_conversions :: [TestTree]
 test_conversions = [ conversionToTime
                    , conversionToMeanAnomaly
@@ -347,6 +305,9 @@ test_conversions = [ conversionToTime
       , testGroup "from true anomaly"
                   (anomalyTimeConversionTests (fromJust .: timeAtTrueAnomaly)
                                               "true anomaly")
+      , testProperty "from true anomaly out of bounds parabolic"
+        (\ν (ParabolicOrbitF o) ->
+          validTrueAnomaly o ν ~> isJust (timeAtTrueAnomaly o ν))
       ]
 
     conversionToMeanAnomaly = let s = "mean anomaly" in testGroup ("conversion to " ++ s)
@@ -377,9 +338,9 @@ test_conversions = [ conversionToTime
 
     conversionToTrueAnomaly = let s = "true anomaly" in testGroup ("conversion to " ++ s)
       [ testGroup "from time"
-                  (timeAnomalyConversionTests (fromJust .: trueAnomalyAtTime) s)
+                  (timeAnomalyConversionTests trueAnomalyAtTime s)
       , testGroup "from mean anomaly"
-                  (anomalyConversionTests (fromJust .: trueAnomalyAtMeanAnomaly)
+                  (anomalyConversionTests trueAnomalyAtMeanAnomaly
                                           "mean anomaly"
                                           s)
       , testGroup "from eccentric anomaly"
@@ -398,26 +359,61 @@ test_conversions = [ conversionToTime
             inverse (coerce (fromJust . meanAnomalyAtEccentricAnomaly (o :: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
                     (coerce (fromJust . eccentricAnomalyAtMeanAnomaly o)))
 
+      , slowTest $ testProperty "mean hyperbolic inverse"
+          (\(HyperbolicOrbit o) ->
+            inverseL (fromJust . meanAnomalyAtHyperbolicAnomaly @Exact o)
+                     (fromJust . hyperbolicAnomalyAtMeanAnomaly o))
+
       , slowTest $ testProperty "mean true inverse"
           (\(EllipticOrbit o) ->
             inverse (fromJust . meanAnomalyAtTrueAnomaly (o :: Orbit Exact))
-                    (fromJust . trueAnomalyAtMeanAnomaly o))
+                    (trueAnomalyAtMeanAnomaly o))
 
-      , slowTest $ testProperty "time true inverse"
+      , slowTest $ testProperty "time true inverse elliptic"
           (\(EllipticOrbit o) ->
             inverse (fromJust . timeAtTrueAnomaly (o :: Orbit Exact))
-                    (fromJust . trueAnomalyAtTime o))
+                    (trueAnomalyAtTime o))
+
+      , slowTest $ testProperty "true time inverse parabolic"
+          (\(ParabolicOrbit o) ->
+            -- Use inverseL because there doesn't exist a time for every true
+            -- anomaly
+            inverseL (fromJust . timeAtTrueAnomaly (o :: Orbit Exact))
+                     (trueAnomalyAtTime o)
+                    )
 
       , testProperty "time eccentric inverse"
           (\(EllipticOrbit o) ->
             inverse (fromJust . timeAtEccentricAnomaly (o :: Orbit Exact))
                     (fromJust . eccentricAnomalyAtTime o))
 
+      -- , slowTest $ testProperty "time hyperbolic inverse"
+      --     (\(HyperbolicOrbit o) ->
+      --       inverseL (fromJust . timeAtHyperbolicAnomaly @Exact o)
+      --                (fromJust . hyperbolicAnomalyAtTime o))
+
       , testProperty "eccentric true inverse"
           (\(EllipticOrbit o) ->
             inverse (coerce (fromJust . eccentricAnomalyAtTrueAnomaly (o:: Orbit Exact)) :: WrappedAngle Exact -> WrappedAngle Exact)
                     (fromJust . coerce (trueAnomalyAtEccentricAnomaly o)))
+
+      , testProperty "hyperbolic true inverse"
+          (\(HyperbolicOrbit o) ->
+            inverseL (fromJust . hyperbolicAnomalyAtTrueAnomaly o)
+                     (fromJust . trueAnomalyAtHyperbolicAnomaly @Exact o))
       ]
+
+test_anomalies :: [TestTree]
+test_anomalies =
+  [ slowTest $ testProperty
+      "hyperbolic true"
+      (\(HyperbolicOrbit o) _M ->
+        let Just _H = hyperbolicAnomalyAtMeanAnomaly @Exact o _M
+            ν       = trueAnomalyAtMeanAnomaly o _M
+            e       = eccentricity o
+        in  qCosh _H === (qCos ν + e) / (1 + e * qCos ν)
+      )
+  ]
 
 -- TODO: Put parabolic and hyperbolic tests here
 test_areal :: [TestTree]
@@ -429,8 +425,119 @@ test_areal = [ testProperty "elliptic areal area"
                                         in area === p |*| arealVelocity o)
              ]
 
+test_orbitalEnergy :: [TestTree]
+test_orbitalEnergy =
+  [ testProperty "negative elliptical energy"
+                 (\(EllipticOrbitF o) -> specificOrbitalEnergy o < zero)
+  , testProperty "zero parabolic energy"
+                 (\(ParabolicOrbitF o) -> specificOrbitalEnergy o === zero)
+  , testProperty "positive hyperbolic energy"
+                 (\(HyperbolicOrbitF o) -> specificOrbitalEnergy o > zero)
+  , testGroup
+    "potential + kinetic"
+    (overAllClasses
+      (\o ν ->
+        specificOrbitalEnergy @Exact o
+          === specificPotentialEnergyAtTrueAnomaly o ν
+          |+| specificKineticEnergyAtTrueAnomaly o ν
+      )
+    )
+  ]
+
+test_radius :: [TestTree]
+test_radius =
+  [ testGroup
+    "periapsis when ν = 0"
+    (overAllClasses (\o -> radiusAtTrueAnomaly @Exact o zero === periapsis o))
+  , testProperty
+    "constant on circular"
+    (\(CircularOrbitF o) ν -> radiusAtTrueAnomaly o ν === periapsis o)
+  , testProperty
+    "apoapsis when ν == π for elliptic"
+    (\(EllipticOrbit o) ->
+      radiusAtTrueAnomaly @Exact o halfTurn === fromJust (apoapsis o)
+    )
+  , testGroup
+    "l when ν == π/2"
+    (overAllClasses
+      (\o -> radiusAtTrueAnomaly @Exact o (halfTurn |*| (-0.5))
+        === semiLatusRectum o
+      )
+    )
+  , testGroup
+    "l when ν == -π/2"
+    (overAllClasses
+      (\o -> radiusAtTrueAnomaly @Exact o (halfTurn |*| (-0.5))
+        === semiLatusRectum o
+      )
+    )
+  , testProperty
+    "from E"
+    (\(EllipticOrbit o) ν ->
+      let Just _E = eccentricAnomalyAtTrueAnomaly @Exact o ν
+      in  radiusAtTrueAnomaly o ν
+            === fromJust (semiMajorAxis o)
+            |*| (1 - eccentricity o |*| qCos _E)
+    )
+  ]
+
+test_speed :: [TestTree]
+test_speed =
+  [ testProperty
+    "constant on circular"
+    (\(CircularOrbitF o) ν ν' ->
+      speedAtTrueAnomaly o ν === speedAtTrueAnomaly o ν'
+    )
+  , testProperty
+    "zero at apex"
+    (\(ParabolicOrbitF o) -> speedAtTrueAnomaly o halfTurn === zero)
+  , testProperty
+    "below escape velocity for elliptical"
+    (\(EllipticOrbitF o) ν -> speedAtTrueAnomaly o ν < escapeVelocityAtDistance
+      (primaryGravitationalParameter o)
+      (radiusAtTrueAnomaly o ν)
+    )
+  , testProperty
+    "escape velocity for parabolic"
+    (\(ParabolicOrbitF o) ν ->
+      speedAtTrueAnomaly o ν === escapeVelocityAtDistance
+        (primaryGravitationalParameter o)
+        (radiusAtTrueAnomaly o ν)
+    )
+  , testProperty
+    "above escape velocity for hyperbolic"
+    (\(HyperbolicOrbitF o) _M ->
+      let ν = trueAnomalyAtMeanAnomaly o _M
+      in  speedAtTrueAnomaly o ν > escapeVelocityAtDistance
+            (primaryGravitationalParameter o)
+            (radiusAtTrueAnomaly o ν)
+    )
+  ]
+
+test_angularMomentum :: [TestTree]
+test_angularMomentum =
+  [ testProperty "negative elliptical energy"
+                 (\(EllipticOrbitF o) -> specificOrbitalEnergy o < zero)
+  , testProperty "zero parabolic energy"
+                 (\(ParabolicOrbitF o) -> specificOrbitalEnergy o === zero)
+  , testProperty "positive hyperbolic energy"
+                 (\(HyperbolicOrbitF o) -> specificOrbitalEnergy o > zero)
+  ]
+
+test_stateVectors :: [TestTree]
+test_stateVectors = [Test.StateVectors.tests]
+
 main :: IO ()
 main = do
   let is = includingOptions [slowTestQCRatio] : defaultIngredients
   defaultMainWithIngredients is $(testGroupGenerator)
+
+----------------------------------------------------------------
+-- Orbit utils
+----------------------------------------------------------------
+
+validTrueAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Bool
+validTrueAnomaly o ν = case hyperbolicDepartureAngle o of
+  Nothing -> True
+  Just d  -> qAbs ν < d
 

@@ -1,9 +1,4 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# language QuasiQuotes #-}
 
 -- | Types and functions for dealing with Kepler orbits.
 module Physics.Orbit
@@ -17,6 +12,7 @@ module Physics.Orbit
     -- ** Utilities
   , isValid
   , classify
+  , normalizeOrbit
     -- ** Orbital elements
   , apoapsis
   , meanMotion
@@ -33,11 +29,13 @@ module Physics.Orbit
     -- *** To time since periapse
   , timeAtMeanAnomaly
   , timeAtEccentricAnomaly
+  , timeAtHyperbolicAnomaly
   , timeAtTrueAnomaly
 
     -- *** To mean anomaly
   , meanAnomalyAtTime
   , meanAnomalyAtEccentricAnomaly
+  , meanAnomalyAtHyperbolicAnomaly
   , meanAnomalyAtTrueAnomaly
 
     -- *** To eccentric anomaly
@@ -46,17 +44,39 @@ module Physics.Orbit
   , eccentricAnomalyAtMeanAnomalyFloat
   , eccentricAnomalyAtTrueAnomaly
 
+    -- *** To hyperbolic anomaly
+  , hyperbolicAnomalyAtTime
+  , hyperbolicAnomalyAtMeanAnomaly
+  , hyperbolicAnomalyAtMeanAnomalyDouble
+  , hyperbolicAnomalyAtTrueAnomaly
+
     -- *** To true anomaly
   , trueAnomalyAtTime
   , trueAnomalyAtMeanAnomaly
   , trueAnomalyAtEccentricAnomaly
+  , trueAnomalyAtHyperbolicAnomaly
+
+    -- *** Properties of orbits
+  , specificAngularMomentum
+  , specificOrbitalEnergy
+  , specificPotentialEnergyAtTrueAnomaly
+  , specificKineticEnergyAtTrueAnomaly
+  , speedAtTrueAnomaly
+  , radiusAtTrueAnomaly
+
+    -- *** Other utilities
+  , escapeVelocityAtDistance
 
     -- * Unit synonyms
+  , Quantity
   , Time
   , Distance
   , Speed
   , Mass
   , Angle
+  , AngleH
+  , RadianHyperbolic(..)
+  , PlaneAngleHyperbolic(..)
   , Unitless
 
     -- * Reexported from 'Data.CReal'
@@ -71,10 +91,13 @@ import           Data.CReal.Converge            ( Converge
                                                 , convergeErr
                                                 )
 import           Data.Constants.Mechanics.Extra
+import           Data.Maybe                     ( fromJust )
 import           Data.Metrology
 import           Data.Metrology.Extra
 import           Data.Metrology.Show            ( )
-import           Data.Metrology.Unsafe          ( UnsafeQu(..) )
+import           Data.Metrology.Unsafe          ( Qu(..)
+                                                , UnsafeQu(..)
+                                                )
 import           Data.Units.SI.Parser
 import           Numeric.AD                     ( Mode
                                                 , Scalar
@@ -84,24 +107,12 @@ import           Numeric.AD.Halley              ( findZero
                                                 , findZeroNoEq
                                                 )
 import           Numeric.AD.Internal.Identity   ( Id(..) )
+import qualified Numeric.AD.Newton.Double      as Newton
+import           Physics.Orbit.Metrology
 
 --------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------
-
-type Quantity u = MkQu_ULN u 'DefaultLCSU
--- | A measure in seconds.
-type Time     = Quantity [si|s|]
--- | A measure in meters.
-type Distance = Quantity [si| m |]
--- | A measure in meters per second.
-type Speed    = Quantity [si| m s^-1 |]
--- | A measure in kilograms.
-type Mass     = Quantity [si| kg |]
--- | A measure in radians.
-type Angle    = Quantity [si| rad |]
--- | A unitless measure.
-type Unitless = Quantity [si||]
 
 -- | Data type defining an orbit parameterized by the type used to
 -- represent values
@@ -179,13 +190,14 @@ data PeriapsisSpecifier a = -- | The orbit is not circular
                                         -- angle of the periapsis relative to
                                         -- the reference direction in the
                                         -- orbital plane.
-                                        argumentOfPeriapsis :: !(Angle a) }
+                                        argumentOfPeriapsis :: !(Angle a)
+                                      }
                             -- | The orbit has an eccentricity of 0 so the
                             -- 'argumentOfPeriapsis' is indeterminate.
                           | Circular
   deriving (Show, Eq)
 
--- | What for the orbit's geometry takes. This is dependant only on the
+-- | What form the orbit's geometry takes. This is dependant only on the
 -- 'eccentricity', e >= 0, of the orbit.
 data Classification = -- | 0 <= e < 1
                       --
@@ -224,9 +236,9 @@ unsafeMapPeriapsisSpecifier f p = case p of
 -- Functions
 --------------------------------------------------------------------------------
 
--- | Return true is the orbit is valid and false if it is invalid. The behavior
--- of all the other functions in this module is undefined when given an invalid
--- orbit.
+-- | Determines if the orbital elements are valid (@e >= 0@ etc...). The
+-- behavior of all the other functions in this module is undefined when given
+-- an invalid orbit.
 isValid :: (Ord a, Num a) => Orbit a -> Bool
 isValid o = e >= 0 &&
             ((e == 0) `iff` (periapsisSpecifier o == Circular)) &&
@@ -238,15 +250,42 @@ isValid o = e >= 0 &&
     q = periapsis o
     μ = primaryGravitationalParameter o
 
--- | 'classify' is a funciton which returns the orbit's class.
+-- | What shape is the orbit
 classify :: (Num a, Ord a) => Orbit a -> Classification
-classify o
-  | e < 1 = Elliptic
-  | e == 1 = Parabolic
-  | e > 1 = Hyperbolic
-  | otherwise = error "classify"
-  where
-    e = eccentricity o
+classify o | e < 1     = Elliptic
+           | e == 1    = Parabolic
+           | e > 1     = Hyperbolic
+           | otherwise = error "classify: NaN eccentricity"
+  where e = eccentricity o
+
+-- | Return an equivalent orbit such that
+--
+-- - i ∈ [0..π)
+-- - Ω ∈ [0..2π)
+-- - ω ∈ [0..2π)
+-- - inclinationSpecifier == NonInclined if i = 0
+-- - periapsisSpecifier == Circular if e == 0 and ω == 0
+normalizeOrbit :: (Floating a, Real a) => Orbit a -> Orbit a
+normalizeOrbit (Orbit e q inc per μ) = Orbit e q inc' per' μ
+ where
+  -- Were we actually given a descending node and have to flip things
+  (inc', flipped) = case inc of
+    NonInclined              -> (NonInclined, False)
+    Inclined _ i | i == zero -> (NonInclined, False)
+    Inclined _Ω i ->
+      let iR  = i `mod'` turn
+          i'  = if flipped then turn |-| iR else iR
+          _Ω' = (if flipped then _Ω |+| halfTurn else _Ω) `mod'` turn
+      in  (Inclined _Ω' i', iR >= halfTurn)
+
+  per' = case per of
+    Circular | flipped   -> Eccentric halfTurn
+             | otherwise -> Circular
+    Eccentric ω
+      | ω == zero, e == 0, not flipped
+      -> Circular
+      | otherwise
+      -> Eccentric $ (if flipped then ω |+| halfTurn else ω) `mod'` turn
 
 -- | Calculate the semi-major axis, a, of the 'Orbit'. Returns 'Nothing' when
 -- given a parabolic orbit for which there is no semi-major axis. Note that the
@@ -262,7 +301,7 @@ semiMajorAxis o =
 
 -- | Calculate the semi-minor axis, b, of the 'Orbit'. Like 'semiMajorAxis'
 -- @\'semiMinorAxis\' o@ is negative when @o@ is a hyperbolic orbit. In the
--- case of a parabolic orbit 'semiMinorAxis' returns 0m.
+-- case of a parabolic orbit 'semiMinorAxis' returns @0m@.
 semiMinorAxis :: (Floating a, Ord a) => Orbit a -> Distance a
 semiMinorAxis o =
   case classify o of
@@ -358,6 +397,14 @@ hyperbolicDepartureAngle o =
 hyperbolicApproachAngle :: (Floating a, Ord a) => Orbit a -> Maybe (Angle a)
 hyperbolicApproachAngle = fmap qNegate . hyperbolicDepartureAngle
 
+----------------------------------------------------------------
+-- ## Conversions between time and anomolies
+----------------------------------------------------------------
+
+---------
+-- To time
+---------
+
 -- | Calculate the time since periapse, t, when the body has the given
 -- <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>, M. M may be
 -- negative, indicating that the orbiting body has yet to reach periapse.
@@ -377,10 +424,36 @@ timeAtMeanAnomaly o _M = _M |/| n
 timeAtEccentricAnomaly :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (Time a)
 timeAtEccentricAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtEccentricAnomaly o
 
+-- | Calculate the time since periapse, t, of a hyperbolic orbit when at
+-- hyperbolic anomaly H.
+--
+-- Returns Nothing if given an elliptic or parabolic orbit.
+timeAtHyperbolicAnomaly
+  :: (Floating a, Ord a) => Orbit a -> AngleH a -> Maybe (Time a)
+timeAtHyperbolicAnomaly o =
+  fmap (timeAtMeanAnomaly o) . meanAnomalyAtHyperbolicAnomaly o
+
 -- | Calculate the time since periapse given the true anomaly, ν, of an
 -- orbiting body.
-timeAtTrueAnomaly :: (Real a, Floating a) => Orbit a -> Angle a -> Maybe (Time a)
-timeAtTrueAnomaly o = fmap (timeAtMeanAnomaly o) . meanAnomalyAtTrueAnomaly o
+--
+-- Returns 'Nothing' if the body never passed through the specified true
+-- anomaly.
+timeAtTrueAnomaly
+  :: (Real a, Floating a) => Orbit a -> Angle a -> Maybe (Time a)
+timeAtTrueAnomaly o ν = case classify o of
+  _ | Just d <- hyperbolicDepartureAngle o, qAbs ν |>| d -> Nothing
+  Parabolic ->
+    let _D = qTan (ν |/| 2)
+        t  = 0.5 |*| qSqrt (qCube l |/| μ) |*| (_D |+| (qCube _D |/| 3))
+    in  Just t
+  _ -> fmap (timeAtMeanAnomaly o) . meanAnomalyAtTrueAnomaly o $ ν
+ where
+  μ = primaryGravitationalParameter o
+  l = semiLatusRectum o
+
+---------
+-- To mean anomaly
+---------
 
 -- | Calculate the <https://en.wikipedia.org/wiki/Mean_anomaly mean anomaly>,
 -- M, at the given time since periapse, t. t may be negative, indicating that
@@ -409,19 +482,39 @@ meanAnomalyAtEccentricAnomaly o _E = case classify o of
         untypedE = delRad _E
         _M = addRad (untypedE |-| e |*| sin untypedE)
 
+-- | Calculate the mean anomaly, M, of a hyperbolic orbit when at hyperbolic
+-- anomaly H
+meanAnomalyAtHyperbolicAnomaly
+  :: (Floating a, Ord a) => Orbit a -> AngleH a -> Maybe (Angle a)
+meanAnomalyAtHyperbolicAnomaly o _H = case classify o of
+  Hyperbolic -> Just _M
+  _          -> Nothing
+ where
+  e  = eccentricity o
+  _M = addRad $ e * qSinh _H - quantity (_H # RadianHyperbolic)
+
 -- | Calculate the mean anomaly, M, of an orbiting body when at the given true
 -- anomaly, ν.
 --
 -- The number of orbits represented by the anomalies is preserved;
 -- i.e. M `div` 2π = ν `div` 2π
 --
--- Currently only implemented for elliptic orbits.
+-- Returns 'Nothing' for parabolic orbits.
+--
+-- Returns 'Nothing' when the trajectory is not defined for the given true
+-- anomaly.
 meanAnomalyAtTrueAnomaly :: (Real a, Floating a)
                          => Orbit a -> Angle a -> Maybe (Angle a)
-meanAnomalyAtTrueAnomaly o = case classify o of
+meanAnomalyAtTrueAnomaly o ν = case classify o of
+  Parabolic -> Nothing
   Elliptic -> meanAnomalyAtEccentricAnomaly o <=<
-              eccentricAnomalyAtTrueAnomaly o
-  _ -> error "TODO: meanAnomalyAtTrueAnomaly"
+              eccentricAnomalyAtTrueAnomaly o $ ν
+  Hyperbolic -> meanAnomalyAtHyperbolicAnomaly o <=<
+                hyperbolicAnomalyAtTrueAnomaly o $ ν
+
+---------
+-- To eccentric
+---------
 
 -- | Calculate the eccentric anomaly, E, of an elliptic orbit at time t.
 --
@@ -508,17 +601,108 @@ eccentricAnomalyAtTrueAnomaly o ν = case classify o of
                then (unsafeMapUnit fromInteger n |*| turn) |+| wrappedE
                else (unsafeMapUnit fromInteger (n+1) |*| turn) |-| wrappedE
 
+---------
+-- To hyperbolic
+---------
+
+hyperbolicAnomalyAtTime
+  :: forall a
+   . (Converge [a], RealFloat a)
+  => Orbit a
+  -> Time a
+  -> Maybe (AngleH a)
+hyperbolicAnomalyAtTime o =
+  hyperbolicAnomalyAtMeanAnomaly o . meanAnomalyAtTime o
+
+hyperbolicAnomalyAtMeanAnomaly
+  :: forall a
+   . (Converge [a], RealFloat a)
+  => Orbit a
+  -> Angle a
+  -> Maybe (AngleH a)
+hyperbolicAnomalyAtMeanAnomaly o _M = case classify o of
+  Hyperbolic -> _H
+  _          -> Nothing
+ where
+  e                       = eccentricity o # [si||]
+  _M'                     = _M # [si|rad|]
+  _MDouble                = realToFrac _M'
+  Just initialGuessDouble = hyperbolicAnomalyAtMeanAnomalyDouble
+    (unsafeMapOrbit realToFrac o)
+    (rad _MDouble)
+  initialGuess = realToFrac . (# RadianHyperbolic) $ initialGuessDouble
+  err :: (Mode b, Floating b, Scalar b ~ a) => b -> b
+  err _H = auto _M' - (auto e * sinh _H - _H)
+  _H = fmap rdh . convergeErr (runId . abs . err . Id) $ findZeroNoEq
+    err
+    initialGuess
+
+-- | Calculate the hyperbolic anomaly, H, at a given mean anomaly. Unline
+-- 'eccentricAnomalyAtMeanAnomalyFloat' this uses double precision floats to
+-- help avoid overflowing.
+hyperbolicAnomalyAtMeanAnomalyDouble
+  :: Orbit Double -> Angle Double -> Maybe (AngleH Double)
+hyperbolicAnomalyAtMeanAnomalyDouble o _M = case classify o of
+  Hyperbolic -> case _H of
+    -- If you hit this, a better initial guess would probably help
+    Qu x | isNaN x -> error "NaN while trying to find hyperbolic anomaly"
+    _              -> Just _H
+  _ -> Nothing
+ where
+  -- Perhaps use something like https://www.researchgate.net/publication/226007277_A_Method_Solving_Kepler%27s_Equation_for_Hyperbolic_Case
+  e            = eccentricity o # [si||]
+  _M'          = _M # [si|rad|]
+  -- TODO: A better guess here
+  initialGuess = _M'
+  _H           = rdh . last . take 200 $ Newton.findZero
+    (\_H -> auto _M' - (auto e * sinh _H - _H))
+    initialGuess
+
+-- | Returns the hyperbolic anomaly, H, for an orbit at true anomaly ν.
+--
+-- Returns 'Nothing' when given an 'Elliptic' or 'Parabolic' orbit, or a true
+-- anomaly out of the range of the hyperbolic orbit.
+hyperbolicAnomalyAtTrueAnomaly
+  :: (Floating a, Ord a) => Orbit a -> Angle a -> Maybe (AngleH a)
+hyperbolicAnomalyAtTrueAnomaly o ν = case classify o of
+  _ | Just d <- hyperbolicDepartureAngle o, qAbs ν |>| d -> Nothing
+  Hyperbolic -> Just _H
+  _          -> Nothing
+ where
+  e     = eccentricity o
+  coshH = (qCos ν + e) / (1 + e * qCos ν)
+  sign  = signum (ν # [si|rad|])
+  _H    = sign *| qArcCosh coshH
+
+---------
+-- To true
+---------
+
 -- | Calculate the true anomaly, ν, of a body at time since periapse, t.
-trueAnomalyAtTime :: (Converge [a], RealFloat a)
-                  => Orbit a -> Time a -> Maybe (Angle a)
-trueAnomalyAtTime o = trueAnomalyAtMeanAnomaly o . meanAnomalyAtTime o
+trueAnomalyAtTime
+  :: forall a . (Converge [a], RealFloat a) => Orbit a -> Time a -> Angle a
+trueAnomalyAtTime o t = case classify o of
+  Elliptic   -> trueAnomalyAtMeanAnomaly o _M
+  Hyperbolic -> trueAnomalyAtMeanAnomaly o _M
+  Parabolic ->
+    let _A = (3 |/| 2) |*| qSqrt (μ |/| (2 |*| qCube (l |/| 2))) |*| t
+        _B = qCubeRoot (_A |+| qSqrt (qSq _A |+| 1))
+    in  2 |*| qArcTan (_B - recip _B)
+ where
+  μ  = primaryGravitationalParameter o
+  l  = semiLatusRectum o
+  _M = meanAnomalyAtTime o t
 
 -- | Calculate the true anomaly, ν, of an orbiting body when it has the given
 -- mean anomaly, _M.
-trueAnomalyAtMeanAnomaly :: (Converge [a], RealFloat a)
-                         => Orbit a -> Angle a -> Maybe (Angle a)
-trueAnomalyAtMeanAnomaly o = trueAnomalyAtEccentricAnomaly o <=<
-                             eccentricAnomalyAtMeanAnomaly o
+trueAnomalyAtMeanAnomaly
+  :: (Converge [a], RealFloat a) => Orbit a -> Angle a -> Angle a
+trueAnomalyAtMeanAnomaly o _M = case classify o of
+  Elliptic -> fromJust
+    (trueAnomalyAtEccentricAnomaly o <=< eccentricAnomalyAtMeanAnomaly o $ _M)
+  Hyperbolic -> fromJust
+    (trueAnomalyAtHyperbolicAnomaly o <=< hyperbolicAnomalyAtMeanAnomaly o $ _M)
+  _ -> error "trueAnomalyAtMeanAnomaly is not defined for Parabolic orbits"
 
 -- | Calculate the true anomaly, ν, of an orbiting body when it has the given
 -- eccentric anomaly, _E.
@@ -536,12 +720,82 @@ trueAnomalyAtEccentricAnomaly o _E = case classify o of
                         _E `divMod'` turn
         e = eccentricity o # [si||]
         wrappedν = rad $ 2 * atan2 (sqrt (1 + e) * sin (wrappedE / 2))
-                                        (sqrt (1 - e) * cos (wrappedE / 2))
+                                   (sqrt (1 - e) * cos (wrappedE / 2))
         ν = turn |*| n |+| wrappedν
+
+trueAnomalyAtHyperbolicAnomaly
+  :: (Ord a, Floating a) => Orbit a -> AngleH a -> Maybe (Angle a)
+trueAnomalyAtHyperbolicAnomaly o _H = case classify o of
+  Hyperbolic -> Just ν
+  _          -> Nothing
+ where
+  e         = eccentricity o
+  tanνOver2 = sqrt ((e + 1) / (e - 1)) * qTanh (_H |/| 2)
+  ν         = 2 |*| qArcTan tanνOver2
+
+----------------------------------------------------------------
+-- Other orbital properties
+----------------------------------------------------------------
+
+-- | The distance, r, from the primary body to the orbiting body at a particular
+-- true anomaly.
+radiusAtTrueAnomaly :: (Ord a, Floating a) => Orbit a -> Angle a -> Distance a
+radiusAtTrueAnomaly o trueAnomaly = case semiMajorAxis o of
+  Just _  -> l |/| (1 |+| e |*| qCos ν)
+  Nothing -> (qSq h |/| μ) |*| (1 |/| (1 |+| qCos ν))
+ where
+  h = specificAngularMomentum o
+  e = eccentricity o
+  ν = trueAnomaly
+  μ = primaryGravitationalParameter o
+  l = semiLatusRectum o
+
+-- | What is the speed, v, of a body at a particular true anomaly
+speedAtTrueAnomaly :: (Ord a, Floating a) => Orbit a -> Angle a -> Speed a
+speedAtTrueAnomaly o trueAnomaly = case semiMajorAxis o of
+  Nothing -> qSqrt (μ |*| 2 |/| r)
+  Just a  -> qSqrt (μ |*| (2 |/| r |-| 1 |/| a))
+ where
+  ν = trueAnomaly
+  μ = primaryGravitationalParameter o
+  r = radiusAtTrueAnomaly o ν
+
+-- | Specific angular momentum, h, is the angular momentum per unit mass
+specificAngularMomentum :: Floating a => Orbit a -> Quantity [si|m^2 s^-1|] a
+specificAngularMomentum o = qSqrt (μ |*| l)
+  where
+    μ = primaryGravitationalParameter o
+    l = semiLatusRectum o
+
+-- | Specific orbital energy, ε, is the orbital energy per unit mass
+specificOrbitalEnergy
+  :: (Ord a, Floating a) => Orbit a -> Quantity [si|J / kg|] a
+specificOrbitalEnergy o = case semiMajorAxis o of
+  Just a  -> qNegate (μ |/| (2 |*| a))
+  Nothing -> zero
+  where μ = primaryGravitationalParameter o
+
+-- | Specific potential energy, εp, is the potential energy per unit mass at a
+-- particular true anomaly
+specificPotentialEnergyAtTrueAnomaly
+  :: (Ord a, Floating a) => Orbit a -> Angle a -> Quantity [si|J / kg|] a
+specificPotentialEnergyAtTrueAnomaly o ν = qNegate (μ |/| r)
+ where
+  r = radiusAtTrueAnomaly o ν
+  μ = primaryGravitationalParameter o
+
+-- | Specific kinetic energy, εk, is the kinetic energy per unit mass at a
+-- particular true anomaly
+specificKineticEnergyAtTrueAnomaly
+  :: (Ord a, Floating a) => Orbit a -> Angle a -> Quantity [si|J / kg|] a
+specificKineticEnergyAtTrueAnomaly o ν = qSq (speedAtTrueAnomaly o ν) |/| 2
 
 ----------------------------------------------------------------
 -- Utils
 ----------------------------------------------------------------
 
-rad :: Fractional a => a -> Angle a
-rad = (% [si|rad|])
+-- | The escape velocity for a primary with specified gravitational parameter
+-- at a particular distance.
+escapeVelocityAtDistance
+  :: (Floating a) => Quantity [si| m^3 s^-2 |] a -> Distance a -> Speed a
+escapeVelocityAtDistance μ r = qSqrt (2 |*| μ |/| r)

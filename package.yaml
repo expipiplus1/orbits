@@ -20,25 +20,31 @@ library:
   - ad         >= 4.3.2
   - base       >= 4.8 && < 5
   - exact-real >= 0.12
+  - lens
+  - linear
   - units
   - units-defs >= 2.2
-  ghc-options: -O2
 
-ghc-options: -Wall
+ghc-options: -Wall -O2
 
 default-extensions:
   DataKinds
+  FlexibleContexts
   GeneralizedNewtypeDeriving
+  LambdaCase
   QuasiQuotes
   ScopedTypeVariables
+  TemplateHaskell
+  TypeApplications
+  TypeFamilies
   TypeOperators
+  ViewPatterns
 
 tests:
   test:
     main: Test.hs
     source-dirs:
       - test
-      - src
     ghc-options:
       - -threaded
     dependencies:
@@ -47,6 +53,8 @@ tests:
       - base
       - checkers
       - exact-real
+      - lens
+      - linear
       - orbits
       - random
       - tagged
