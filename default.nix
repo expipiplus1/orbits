@@ -1,5 +1,5 @@
 { nixpkgsSrc ? builtins.fetchTarball
-  "https://github.com/NixOS/nixpkgs/archive/e985ffea2d640bb6fe7d5ef7aa968b2b7d107f47.tar.gz"
+  "https://github.com/NixOS/nixpkgs/archive/ea76532bc86185192fbfbfba82d6c5b375f5f870.tar.gz"
 , pkgs ? import nixpkgsSrc { }, compiler ? "ghc882", hoogle ? true }:
 
 let
@@ -16,7 +16,6 @@ let
     pkgs.haskell.packages.${compiler'}.override {
       overrides = self: super:
         {
-          bytes = self.bytes_0_17;
           exact-real = markUnbroken (dontCheck (doJailbreak super.exact-real));
           units-defs = self.callCabal2nix "" (builtins.fetchTarball
             "https://hackage.haskell.org/package/units-defs-2.2/units-defs-2.2.tar.gz")
