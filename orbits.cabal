@@ -1,13 +1,13 @@
 cabal-version: 1.24
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.33.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ce043bffd83b1b5f25190fda481d4e54eec518530f2c96d5482c0e829c115d63
+-- hash: b0d20db4cd07be0ae62542dc01fb9fddb137451e34eb3a68439405d4619e86d9
 
 name:           orbits
-version:        0.3
+version:        0.4
 synopsis:       Types and functions for Kepler orbits.
 category:       Physics
 homepage:       https://github.com/expipiplus1/orbits#readme
