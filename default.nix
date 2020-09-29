@@ -1,6 +1,6 @@
 { nixpkgsSrc ? builtins.fetchTarball
-  "https://github.com/NixOS/nixpkgs/archive/ea76532bc86185192fbfbfba82d6c5b375f5f870.tar.gz"
-, pkgs ? import nixpkgsSrc { }, compiler ? "ghc882", hoogle ? true }:
+  "https://github.com/NixOS/nixpkgs/archive/1179840f9a88b8a548f4b11d1a03aa25a790c379.tar.gz"
+, pkgs ? import nixpkgsSrc { }, compiler ? null, hoogle ? true }:
 
 let
   src = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
@@ -17,9 +17,6 @@ let
       overrides = self: super:
         {
           exact-real = markUnbroken (dontCheck (doJailbreak super.exact-real));
-          units-defs = self.callCabal2nix "" (builtins.fetchTarball
-            "https://hackage.haskell.org/package/units-defs-2.2/units-defs-2.2.tar.gz")
-            { };
         } // pkgs.lib.optionalAttrs hoogle {
           ghc = super.ghc // { withPackages = super.ghc.withHoogle; };
           ghcWithPackages = self.ghc.withPackages;
