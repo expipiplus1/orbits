@@ -1,3 +1,4 @@
+{-# language CPP #-}
 {-# language QuasiQuotes #-}
 
 -- | Types and functions for dealing with Kepler orbits.
@@ -103,9 +104,16 @@ import           Numeric.AD                     ( Mode
                                                 , Scalar
                                                 , auto
                                                 )
+#if MIN_VERSION_ad(4,5,0)
+import           Numeric.AD.Rank1.Halley        ( findZero
+                                                , findZeroNoEq
+                                                )
+#else
 import           Numeric.AD.Halley              ( findZero
                                                 , findZeroNoEq
                                                 )
+#endif
+
 import           Numeric.AD.Internal.Identity   ( Id(..) )
 import qualified Numeric.AD.Newton.Double      as Newton
 import           Physics.Orbit.Metrology
