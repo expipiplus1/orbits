@@ -1,6 +1,8 @@
 # Change Log
 
 ## WIP
+
+## [0.4.0.1] - 2022-09-06
   - Raise upper bound on ad
 
 ## 0.4 - 2020-09-29
