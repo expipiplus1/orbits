@@ -1,6 +1,7 @@
 # Change Log
 
 ## WIP
+  - Raise upper bound on ad
 
 ## 0.4 - 2020-09-29
   - Hyperbolic anomaly support
