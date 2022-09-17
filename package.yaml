@@ -2,9 +2,9 @@ name: orbits
 version: "0.4.0.1"
 synopsis: Types and functions for Kepler orbits.
 category: Physics
-author: Joe Hermaszewski
-maintainer: Joe Hermaszewski <keep.it.real@monoid.al>
-copyright: 2020 Joe Hermaszewski
+author: Ellie Hermaszewska
+maintainer: Ellie Hermaszewska <keep.it.real@monoid.al>
+copyright: 2020 Ellie Hermaszewska
 github: expipiplus1/orbits
 extra-source-files:
 - .gitignore

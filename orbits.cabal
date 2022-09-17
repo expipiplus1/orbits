@@ -12,9 +12,9 @@ synopsis:       Types and functions for Kepler orbits.
 category:       Physics
 homepage:       https://github.com/expipiplus1/orbits#readme
 bug-reports:    https://github.com/expipiplus1/orbits/issues
-author:         Joe Hermaszewski
-maintainer:     Joe Hermaszewski <keep.it.real@monoid.al>
-copyright:      2020 Joe Hermaszewski
+author:         Ellie Hermaszewska
+maintainer:     Ellie Hermaszewska <keep.it.real@monoid.al>
+copyright:      2020 Ellie Hermaszewska
 license:        BSD3
 license-file:   LICENSE
 build-type:     Custom
